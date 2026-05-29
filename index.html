@@ -425,6 +425,304 @@ html[dir="ltr"] .toast { right:28px; }
 }
 .notes-empty-editor i { font-size:44px; opacity:0.18; }
 .notes-empty-editor p { font-size:14px; line-height:1.65; max-width:240px; }
+
+/* ===== FEATURE 1: XP & LEVEL BAR (appended — no existing styles changed) ===== */
+.xp-level-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 24px; margin-top: 20px; position: relative; overflow: hidden;
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; gap: 18px;
+}
+.xp-level-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(168,85,247,0.06), rgba(56,189,248,0.04));
+  pointer-events: none;
+}
+.xp-level-badge {
+  width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue));
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #fff;
+  box-shadow: 0 0 22px var(--neon-purple-glow);
+  transition: box-shadow 0.4s ease, transform 0.4s ease;
+}
+.xp-level-badge.level-up-anim {
+  animation: xpLevelPulse 0.7s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes xpLevelPulse {
+  0%   { transform: scale(1);    box-shadow: 0 0 22px var(--neon-purple-glow); }
+  40%  { transform: scale(1.35); box-shadow: 0 0 50px var(--neon-purple-glow), 0 0 80px rgba(168,85,247,0.5); }
+  100% { transform: scale(1);    box-shadow: 0 0 22px var(--neon-purple-glow); }
+}
+.xp-info { flex: 1; min-width: 0; }
+.xp-info-top {
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: space-between; justify-content: space-between; margin-bottom: 8px;
+}
+.xp-level-label { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.xp-count-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.xp-bar-track {
+  height: 8px; background: var(--bg-elevated); border-radius: 10px; overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+.xp-bar-fill {
+  height: 100%; border-radius: 10px;
+  background: linear-gradient(90deg, var(--neon-purple), var(--neon-blue));
+  box-shadow: 0 0 10px var(--neon-purple-glow);
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+.xp-bar-fill.xp-gained { animation: xpFlash 0.5s ease; }
+@keyframes xpFlash {
+  0%   { filter: brightness(1); }
+  45%  { filter: brightness(2) saturate(1.5); }
+  100% { filter: brightness(1); }
+}
+/* Level-up glow overlay */
+.level-up-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 800;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.3s;
+}
+.level-up-overlay.show { opacity: 1; animation: levelUpFadeOut 2.2s ease forwards; }
+@keyframes levelUpFadeOut {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.level-up-text {
+  background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue));
+  color: #fff; padding: 18px 38px; border-radius: 20px; font-size: 22px; font-weight: 800;
+  box-shadow: 0 0 60px var(--neon-purple-glow), 0 0 120px rgba(168,85,247,0.3);
+  animation: levelUpBounce 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  letter-spacing: -0.3px;
+}
+@keyframes levelUpBounce {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ===== FEATURE 2: POMODORO TIMER (appended — no existing styles changed) ===== */
+.pomodoro-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 28px 24px; margin-top: 20px; text-align: center; position: relative; overflow: hidden;
+}
+.pomodoro-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(52,211,153,0.05), rgba(168,85,247,0.04));
+  pointer-events: none;
+}
+.pomodoro-header {
+  display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: space-between; justify-content: space-between; margin-bottom: 22px;
+}
+.pomodoro-title { font-size: 14px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+.pomodoro-mode-badge {
+  font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+  transition: all 0.3s ease;
+}
+.pomodoro-mode-badge.work  { background: rgba(168,85,247,0.15); color: var(--neon-purple); border: 1px solid rgba(168,85,247,0.25); }
+.pomodoro-mode-badge.break { background: rgba(52,211,153,0.15); color: var(--neon-green);  border: 1px solid rgba(52,211,153,0.25); }
+.pomodoro-ring-wrap { position: relative; width: 150px; height: 150px; margin: 0 auto 22px auto; }
+.pomodoro-svg { transform: rotate(-90deg); }
+.pomodoro-track { fill: none; stroke: var(--bg-elevated); stroke-width: 7; }
+.pomodoro-progress { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.5s ease; }
+.pomodoro-time-display {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-size: 32px; font-weight: 800; letter-spacing: -1px; color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.pomodoro-session-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; text-align: center; }
+.pomodoro-controls { display: -webkit-flex; display: flex; gap: 10px; -webkit-justify-content: center; justify-content: center; margin-top: 4px; }
+.pomo-btn {
+  padding: 10px 22px; border-radius: var(--radius-sm); border: none; font-family: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all var(--transition);
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.pomo-btn-start  { background: linear-gradient(135deg, var(--neon-green), #059669); color: #fff; box-shadow: 0 4px 18px var(--neon-green-glow); }
+.pomo-btn-start:hover  { transform: translateY(-2px); box-shadow: 0 7px 26px var(--neon-green-glow); }
+.pomo-btn-pause  { background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.25); color: var(--neon-amber); }
+.pomo-btn-pause:hover  { background: rgba(251,191,36,0.2); }
+.pomo-btn-reset  { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+.pomo-btn-reset:hover  { background: var(--bg-hover); color: var(--text-primary); }
+.pomo-xp-hint { font-size: 11px; color: var(--text-muted); margin-top: 14px; }
+.pomo-xp-hint span { color: var(--neon-purple); font-weight: 700; }
+
+/* ===== FEATURE 3: AI INSIGHTS CARD (appended — no existing styles changed) ===== */
+.nebula-insights-card {
+  background: var(--bg-card); border: 1px solid rgba(168,85,247,0.2); border-radius: var(--radius);
+  padding: 22px 24px; margin-top: 20px; position: relative; overflow: hidden;
+}
+.nebula-insights-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(168,85,247,0.07), rgba(244,114,182,0.04));
+  pointer-events: none;
+}
+.nebula-insights-header {
+  display: -webkit-flex; display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.nebula-insights-icon {
+  width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+  background: rgba(168,85,247,0.14); color: var(--neon-purple);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  box-shadow: 0 0 12px var(--neon-purple-glow);
+}
+.nebula-insights-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.nebula-insights-body { display: flex; flex-direction: column; gap: 10px; }
+.insight-item {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+  background: var(--bg-elevated); border-radius: var(--radius-sm);
+  border: 1px solid var(--border); transition: border-color 0.25s;
+}
+.insight-item:hover { border-color: rgba(168,85,247,0.3); }
+.insight-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+  box-shadow: 0 0 6px currentColor;
+}
+.insight-text { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+.insight-text strong { color: var(--text-primary); }
+
+/* ===== NEW FEATURE A: LONG-TERM INTERVAL HABITS (isolated module) ===== */
+.lt-section-header {
+  display: -webkit-flex; display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 16px; margin-top: 28px; flex-wrap: wrap; gap: 12px;
+}
+.lt-section-title {
+  font-size: 15px; font-weight: 700; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.lt-section-title i { color: var(--neon-amber); font-size: 14px; }
+.lt-add-btn {
+  padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid rgba(251,191,36,0.3);
+  background: rgba(251,191,36,0.08); color: var(--neon-amber); font-family: inherit;
+  font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center;
+  gap: 7px; transition: all var(--transition);
+}
+.lt-add-btn:hover { background: rgba(251,191,36,0.16); box-shadow: 0 0 14px var(--neon-amber-glow); transform: translateY(-1px); }
+.lt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.lt-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; position: relative; overflow: hidden;
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+}
+.lt-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+.lt-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(251,191,36,0.04), rgba(168,85,247,0.03));
+  pointer-events: none;
+}
+.lt-card.lt-due {
+  border-color: var(--neon-amber);
+  box-shadow: 0 0 0 1px var(--neon-amber), 0 0 28px var(--neon-amber-glow), inset 0 0 24px rgba(251,191,36,0.06);
+  animation: ltDuePulse 2.2s ease-in-out infinite;
+}
+@keyframes ltDuePulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--neon-amber), 0 0 28px var(--neon-amber-glow), inset 0 0 24px rgba(251,191,36,0.06); }
+  50%       { box-shadow: 0 0 0 1px var(--neon-amber), 0 0 48px rgba(251,191,36,0.6),   inset 0 0 36px rgba(251,191,36,0.12); }
+}
+.lt-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; gap: 10px; }
+.lt-card-left { display: flex; align-items: center; gap: 10px; }
+.lt-card-emoji { font-size: 26px; line-height: 1; flex-shrink: 0; }
+.lt-card-info { min-width: 0; }
+.lt-card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-card-interval { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.lt-card-del {
+  width: 28px; height: 28px; border-radius: 8px; border: none; flex-shrink: 0;
+  background: rgba(244,114,182,0.08); color: var(--neon-pink); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+  transition: all var(--transition);
+}
+.lt-card-del:hover { background: rgba(244,114,182,0.2); box-shadow: 0 0 10px var(--neon-pink-glow); }
+.lt-countdown {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.lt-countdown-num {
+  font-size: 28px; font-weight: 800; letter-spacing: -1px; color: var(--neon-amber);
+  line-height: 1; min-width: 2.2ch; text-align: right;
+}
+.lt-countdown-num.overdue { color: var(--neon-red); }
+.lt-countdown-num.done    { color: var(--neon-green); }
+.lt-countdown-label { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.lt-progress-wrap { height: 6px; background: var(--bg-elevated); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+.lt-progress-fill {
+  height: 100%; border-radius: 10px;
+  background: linear-gradient(90deg, var(--neon-purple), var(--neon-amber));
+  box-shadow: 0 0 8px var(--neon-amber-glow);
+  transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+.lt-complete-btn {
+  width: 100%; padding: 10px; border-radius: var(--radius-sm); border: none;
+  font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.25);
+  color: var(--neon-amber); transition: all var(--transition);
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.lt-complete-btn:hover { background: rgba(251,191,36,0.2); box-shadow: 0 0 18px var(--neon-amber-glow); transform: translateY(-1px); }
+.lt-complete-btn.lt-due-btn {
+  background: linear-gradient(135deg, var(--neon-amber), #d97706);
+  color: #000; border-color: transparent; box-shadow: 0 4px 20px var(--neon-amber-glow);
+}
+.lt-complete-btn.lt-due-btn:hover { box-shadow: 0 6px 30px rgba(251,191,36,0.6); transform: translateY(-2px); }
+.lt-xp-burst {
+  font-size: 11px; color: var(--neon-purple); font-weight: 700; text-align: center;
+  margin-top: 8px; opacity: 0.75;
+}
+/* Add-habit modal panel */
+.lt-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  display: none; align-items: center; justify-content: center; z-index: 550; padding: 20px;
+}
+.lt-modal-overlay.show { display: -webkit-flex; display: flex; animation: fadeUp 0.3s ease; }
+.lt-modal {
+  background: var(--bg-card); border: 1px solid rgba(251,191,36,0.25);
+  border-radius: var(--radius); padding: 28px; max-width: 440px; width: 100%;
+  box-shadow: 0 0 48px rgba(251,191,36,0.12);
+}
+.lt-modal-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+.lt-modal-title i { color: var(--neon-amber); }
+.lt-form-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.lt-form-row input, .lt-form-row select {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 11px 14px; color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none;
+  transition: border-color 0.25s; flex: 1; min-width: 120px;
+}
+.lt-form-row input:focus, .lt-form-row select:focus { border-color: var(--neon-amber); box-shadow: 0 0 10px var(--neon-amber-glow); }
+.lt-form-row label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 500; }
+.lt-form-field { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
+.lt-modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+.lt-btn-cancel { padding: 10px 20px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+.lt-btn-cancel:hover { background: var(--bg-hover); color: var(--text-primary); }
+.lt-btn-save { padding: 10px 24px; border-radius: var(--radius-sm); border: none; background: linear-gradient(135deg, var(--neon-amber), #d97706); color: #000; font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: all var(--transition); box-shadow: 0 4px 16px var(--neon-amber-glow); }
+.lt-btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(251,191,36,0.5); }
+.lt-empty { text-align: center; padding: 36px 20px; color: var(--text-muted); font-size: 13px; background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.06); border-radius: var(--radius); }
+.lt-empty i { font-size: 32px; display: block; margin-bottom: 10px; opacity: 0.25; }
+
+/* ===== NEW FEATURE B: NOTIFICATION PERMISSION BUTTON ===== */
+.notif-permission-bar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  background: rgba(56,189,248,0.06); border: 1px solid rgba(56,189,248,0.2);
+  border-radius: var(--radius-sm); padding: 13px 18px; margin-top: 20px;
+}
+.notif-permission-bar.hidden { display: none; }
+.notif-bar-left { display: flex; align-items: center; gap: 10px; }
+.notif-bar-icon { color: var(--neon-blue); font-size: 16px; }
+.notif-bar-text { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+.notif-bar-text span { color: var(--text-primary); font-weight: 700; }
+.notif-enable-btn {
+  padding: 8px 18px; border-radius: var(--radius-sm); border: none;
+  background: linear-gradient(135deg, var(--neon-blue), #0284c7); color: #fff;
+  font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: all var(--transition); box-shadow: 0 4px 14px var(--neon-blue-glow);
+  display: flex; align-items: center; gap: 6px;
+}
+.notif-enable-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(56,189,248,0.45); }
+.notif-dismiss-btn {
+  background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px;
+  padding: 4px; transition: color 0.2s; line-height: 1;
+}
+.notif-dismiss-btn:hover { color: var(--text-secondary); }
 </style>
 </head>
 <body>
@@ -437,6 +735,7 @@ html[dir="ltr"] .toast { right:28px; }
   <div class="nav-item" onclick="navigate(this,'rewards')"><i class="fas fa-gift"></i><span class="nav-label" data-key="navRewards">Rewards</span></div>
   <div class="nav-item" onclick="navigate(this,'analytics')"><i class="fas fa-chart-line"></i><span class="nav-label" data-key="navAnalytics">Analytics</span></div>
   <div class="nav-item" onclick="navigate(this,'notes')"><i class="fas fa-book-open"></i><span class="nav-label" data-key="navNotes">Notes</span></div>
+  <div class="nav-item" onclick="navigate(this,'longterm')"><i class="fas fa-hourglass-half"></i><span class="nav-label">Interval Habits</span></div>
   <div class="spacer"></div>
   <div class="user-avatar">N</div>
 </nav>
@@ -507,6 +806,29 @@ html[dir="ltr"] .toast { right:28px; }
         <div class="chart-container"><canvas id="categoryChart"></canvas></div>
       </div>
     </div>
+
+    <!-- FEATURE 1: XP Level Bar (appended into dashboard) -->
+    <div class="xp-level-card" id="xpLevelCard">
+      <div class="xp-level-badge" id="xpLevelBadge">Lv1</div>
+      <div class="xp-info">
+        <div class="xp-info-top">
+          <span class="xp-level-label" id="xpLevelTitle">Level 1 — Explorer</span>
+          <span class="xp-count-label" id="xpCountLabel">0 / 200 XP</span>
+        </div>
+        <div class="xp-bar-track"><div class="xp-bar-fill" id="xpBarFill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <!-- FEATURE 3: AI Insights Card (appended into dashboard) -->
+    <div class="nebula-insights-card" id="nebulaInsightsCard">
+      <div class="nebula-insights-header">
+        <div class="nebula-insights-icon"><i class="fas fa-brain"></i></div>
+        <span class="nebula-insights-title">Nebula Recommendations</span>
+      </div>
+      <div class="nebula-insights-body" id="nebulaInsightsBody">
+        <div class="insight-item"><div class="insight-dot" style="color:var(--neon-purple);background:var(--neon-purple)"></div><div class="insight-text">Analyzing your habits…</div></div>
+      </div>
+    </div>
   </section>
 
   <!-- ===== TRACKER ===== -->
@@ -526,6 +848,31 @@ html[dir="ltr"] .toast { right:28px; }
         <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:var(--bg-elevated);border:1px solid var(--border);display:inline-block;"></span> <span data-key="lblIncomplete">Incomplete</span></span>
         <span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:14px;border-radius:4px;background:var(--neon-green);display:inline-block;box-shadow:0 0 8px var(--neon-green-glow);"></span> <span data-key="lblCompleted">Completed</span></span>
       </div>
+    </div>
+
+    <!-- FEATURE 2: Pomodoro Timer (appended into tracker section) -->
+    <div class="pomodoro-card" id="pomodoroCard">
+      <div class="pomodoro-header">
+        <div class="pomodoro-title"><i class="fas fa-stopwatch" style="color:var(--neon-green)"></i> Pomodoro Focus Timer</div>
+        <div class="pomodoro-mode-badge work" id="pomoModeBadge">Work Session</div>
+      </div>
+      <div class="pomodoro-ring-wrap">
+        <svg class="pomodoro-svg" width="150" height="150" viewBox="0 0 150 150">
+          <circle class="pomodoro-track" cx="75" cy="75" r="65"/>
+          <circle class="pomodoro-progress" id="pomoProgressCircle" cx="75" cy="75" r="65"
+            stroke="var(--neon-green)"
+            stroke-dasharray="408.41"
+            stroke-dashoffset="0"/>
+        </svg>
+        <div class="pomodoro-time-display" id="pomoTimeDisplay">25:00</div>
+      </div>
+      <div class="pomodoro-session-label" id="pomoSessionLabel">Session 1 · Work</div>
+      <div class="pomodoro-controls" style="margin-top:16px;">
+        <button class="pomo-btn pomo-btn-start" id="pomoBtnStart" onclick="pomodoroStart()"><i class="fas fa-play"></i> Start</button>
+        <button class="pomo-btn pomo-btn-pause" id="pomoBtnPause" onclick="pomodoroPause()" style="display:none"><i class="fas fa-pause"></i> Pause</button>
+        <button class="pomo-btn pomo-btn-reset" onclick="pomodoroReset()"><i class="fas fa-redo"></i> Reset</button>
+      </div>
+      <div class="pomo-xp-hint">Complete a work session to earn <span>+100 XP</span></div>
     </div>
   </section>
 
@@ -625,9 +972,82 @@ html[dir="ltr"] .toast { right:28px; }
       </div>
     </div>
   </section>
+
+  <!-- ===== LONG-TERM INTERVAL HABITS SECTION ===== -->
+  <section class="section" id="longterm">
+    <div class="section-title"><i class="fas fa-hourglass-half" style="color:var(--neon-amber)"></i> Interval &amp; Long-Term Habits</div>
+
+    <!-- Notification Permission Bar (shown if notifications not yet granted) -->
+    <div class="notif-permission-bar" id="notifPermissionBar">
+      <div class="notif-bar-left">
+        <i class="fas fa-bell notif-bar-icon"></i>
+        <span class="notif-bar-text"><span>Enable Reminders</span> — get notified when interval habits are due &amp; for evening habit nudges</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="notif-enable-btn" onclick="ltRequestNotificationPermission()">
+          <i class="fas fa-bell"></i> Enable
+        </button>
+        <button class="notif-dismiss-btn" onclick="ltDismissNotifBar()" title="Dismiss">✕</button>
+      </div>
+    </div>
+
+    <!-- Long-term habits grid -->
+    <div class="lt-section-header">
+      <div class="lt-section-title"><i class="fas fa-infinity"></i> Your Interval Habits</div>
+      <button class="lt-add-btn" onclick="ltOpenAddModal()"><i class="fas fa-plus"></i> New Interval Habit</button>
+    </div>
+    <div id="ltGrid" class="lt-grid"></div>
+  </section>
 </main>
 
-<!-- Reward Modal -->
+<!-- LONG-TERM HABIT ADD MODAL -->
+<div class="lt-modal-overlay" id="ltModalOverlay">
+  <div class="lt-modal">
+    <div class="lt-modal-title"><i class="fas fa-hourglass-half"></i> New Interval Habit</div>
+    <div class="lt-form-row">
+      <div class="lt-form-field" style="flex:2">
+        <label>Habit Name</label>
+        <input type="text" id="ltName" placeholder="e.g. Clean AC Filters" maxlength="48">
+      </div>
+      <div class="lt-form-field" style="flex:0 0 70px">
+        <label>Emoji</label>
+        <input type="text" id="ltEmoji" placeholder="🔧" maxlength="2" value="🔁">
+      </div>
+    </div>
+    <div class="lt-form-row">
+      <div class="lt-form-field">
+        <label>Repeat Every</label>
+        <input type="number" id="ltIntervalDays" min="1" max="365" value="7" placeholder="7">
+      </div>
+      <div class="lt-form-field">
+        <label>Unit</label>
+        <select id="ltIntervalUnit">
+          <option value="days">Days</option>
+          <option value="weeks">Weeks</option>
+          <option value="months">Months</option>
+        </select>
+      </div>
+      <div class="lt-form-field">
+        <label>XP Reward</label>
+        <select id="ltXpReward">
+          <option value="300">300 XP</option>
+          <option value="500" selected>500 XP</option>
+          <option value="750">750 XP</option>
+          <option value="1000">1000 XP</option>
+        </select>
+      </div>
+    </div>
+    <div class="lt-modal-actions">
+      <button class="lt-btn-cancel" onclick="ltCloseAddModal()">Cancel</button>
+      <button class="lt-btn-save" onclick="ltSaveNewHabit()"><i class="fas fa-check"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURE 1: Level-Up Overlay (appended to body) -->
+<div class="level-up-overlay" id="levelUpOverlay">
+  <div class="level-up-text" id="levelUpText">🚀 Level Up! Level 2</div>
+</div>
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-icon" id="modalIcon">🎉</div>
@@ -637,7 +1057,7 @@ html[dir="ltr"] .toast { right:28px; }
   </div>
 </div>
 
-<!-- Reset Confirm Dialog -->
+<!-- Reward Modal -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
     <div class="confirm-icon">⚠️</div>
@@ -930,10 +1350,13 @@ function init(){
   state.habits = getDefaultHabits();
   state.rewards = getDefaultRewards();
   loadFromStorage();
+  loadXP();
   updateDateChip();
   renderAll();
   initNotes();
   initQuotes();
+  renderXPBar();
+  renderNebulaInsights();
   // Register Service Worker for PWA offline mode — called directly (DOM already ready)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
@@ -945,6 +1368,10 @@ function init(){
   setInterval(function(){ updateGreeting(); updateDateChip(); }, 60000);
   checkBackupReminder();
   setInterval(checkBackupReminder, 3600000);
+  // ---- NEW FEATURE HOOKS (isolated, non-destructive) ----
+  ltInit();
+  nebulaNotifInit();
+  nebulaBadgeUpdate();
 }
 
 function updateGreeting(){
@@ -1280,6 +1707,10 @@ function doReset(){
     _safeStorage.removeItem('nebula_last_backup');
     _safeStorage.removeItem('nebula_notes');
     _safeStorage.removeItem('nebula_quote_idx');
+    _safeStorage.removeItem('nebula_xp_state');
+    _safeStorage.removeItem('nebula_longTermHabits');
+    _safeStorage.removeItem('nebula_notif_dismissed');
+    _safeStorage.removeItem('nebula_notif_fired');
   } catch(e){}
   hideResetConfirm();
   window.location.reload();
@@ -1684,10 +2115,292 @@ function initNotes() {
   renderNotesList();
 }
 
+// ===================== FEATURE 1: XP & LEVELS =====================
+var XP_PER_COMPLETION = 50;
+var XP_PER_POMODORO   = 100;
+var _xpState = { xp: 0, level: 1 };
+var XP_THRESHOLDS = [0,200,450,750,1100,1500,2000,2600,3300,4100,5000];
+var LEVEL_TITLES   = ['Explorer','Starter','Builder','Achiever','Champion','Master','Legend','Sage','Guru','Titan','Nebula'];
+
+function loadXP() {
+  try {
+    var raw = _safeStorage.getItem('nebula_xp_state');
+    if (raw) {
+      var p = JSON.parse(raw);
+      if (typeof p.xp === 'number') _xpState.xp = p.xp;
+      if (typeof p.level === 'number') _xpState.level = p.level;
+    }
+  } catch(e) {}
+}
+
+function saveXP() {
+  try { _safeStorage.setItem('nebula_xp_state', JSON.stringify(_xpState)); } catch(e) {}
+}
+
+function addXP(amount) {
+  loadXP();
+  _xpState.xp += amount;
+  var oldLevel = _xpState.level;
+  // Calculate new level
+  for (var i = XP_THRESHOLDS.length - 1; i >= 1; i--) {
+    if (_xpState.xp >= XP_THRESHOLDS[i]) { _xpState.level = i + 1; break; }
+    if (i === 1 && _xpState.xp < XP_THRESHOLDS[1]) { _xpState.level = 1; }
+  }
+  if (_xpState.level > XP_THRESHOLDS.length) _xpState.level = XP_THRESHOLDS.length;
+  var leveled = _xpState.level > oldLevel;
+  saveXP();
+  renderXPBar();
+  if (leveled) triggerLevelUp(_xpState.level);
+}
+
+function renderXPBar() {
+  loadXP();
+  var lvl = Math.min(_xpState.level, LEVEL_TITLES.length);
+  var curThresh  = XP_THRESHOLDS[lvl - 1] || 0;
+  var nextThresh = XP_THRESHOLDS[lvl] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1];
+  var pct = (nextThresh > curThresh) ? Math.min(100, ((_xpState.xp - curThresh) / (nextThresh - curThresh)) * 100) : 100;
+
+  var badge     = document.getElementById('xpLevelBadge');
+  var title     = document.getElementById('xpLevelTitle');
+  var countLbl  = document.getElementById('xpCountLabel');
+  var fill      = document.getElementById('xpBarFill');
+  if (!badge || !title || !countLbl || !fill) return;
+
+  badge.textContent   = 'Lv' + lvl;
+  title.textContent   = 'Level ' + lvl + ' — ' + (LEVEL_TITLES[lvl - 1] || 'Nebula');
+  countLbl.textContent = _xpState.xp + ' / ' + nextThresh + ' XP';
+  fill.style.width    = pct + '%';
+
+  // Flash animation
+  fill.classList.remove('xp-gained');
+  void fill.offsetWidth;
+  fill.classList.add('xp-gained');
+}
+
+function triggerLevelUp(newLevel) {
+  var badge = document.getElementById('xpLevelBadge');
+  if (badge) { badge.classList.remove('level-up-anim'); void badge.offsetWidth; badge.classList.add('level-up-anim'); }
+  var overlay = document.getElementById('levelUpOverlay');
+  var text    = document.getElementById('levelUpText');
+  if (overlay && text) {
+    text.textContent = '🚀 Level Up! Level ' + newLevel + ' — ' + (LEVEL_TITLES[newLevel - 1] || 'Nebula');
+    overlay.classList.remove('show');
+    void overlay.offsetWidth;
+    overlay.classList.add('show');
+    setTimeout(function() { overlay.classList.remove('show'); }, 2300);
+  }
+  if (typeof confetti === 'function') confetti({ particleCount:80, spread:70, origin:{y:0.5}, colors:['#a855f7','#38bdf8','#f472b6'] });
+}
+
+// ===================== FEATURE 2: POMODORO TIMER =====================
+var _pomo = {
+  running: false, isBreak: false, session: 1,
+  totalSecs: 25 * 60, remainingSecs: 25 * 60, interval: null
+};
+var POMO_WORK_SECS  = 25 * 60;
+var POMO_BREAK_SECS = 5  * 60;
+var POMO_CIRCUMFERENCE = 2 * Math.PI * 65; // 408.41
+
+function pomodoroStart() {
+  if (_pomo.running) return;
+  _pomo.running = true;
+  document.getElementById('pomoBtnStart').style.display = 'none';
+  document.getElementById('pomoBtnPause').style.display = 'inline-flex';
+  _pomo.interval = setInterval(function() {
+    _pomo.remainingSecs--;
+    if (_pomo.remainingSecs <= 0) {
+      clearInterval(_pomo.interval);
+      _pomo.running = false;
+      if (!_pomo.isBreak) {
+        // Work session complete — award XP
+        addXP(XP_PER_POMODORO);
+        showToast('+100 XP — Focus session complete! 🍅', 'success');
+        _pomo.isBreak = true;
+        _pomo.totalSecs = POMO_BREAK_SECS;
+        _pomo.remainingSecs = POMO_BREAK_SECS;
+      } else {
+        // Break complete
+        _pomo.session++;
+        _pomo.isBreak = false;
+        _pomo.totalSecs = POMO_WORK_SECS;
+        _pomo.remainingSecs = POMO_WORK_SECS;
+        showToast('Break over! Ready for session ' + _pomo.session + '?', 'info');
+      }
+      document.getElementById('pomoBtnStart').style.display = 'inline-flex';
+      document.getElementById('pomoBtnPause').style.display = 'none';
+      updatePomodoroUI();
+    } else {
+      updatePomodoroUI();
+    }
+  }, 1000);
+}
+
+function pomodoroPause() {
+  clearInterval(_pomo.interval);
+  _pomo.running = false;
+  document.getElementById('pomoBtnStart').style.display = 'inline-flex';
+  document.getElementById('pomoBtnPause').style.display = 'none';
+}
+
+function pomodoroReset() {
+  clearInterval(_pomo.interval);
+  _pomo.running = false;
+  _pomo.isBreak = false;
+  _pomo.totalSecs = POMO_WORK_SECS;
+  _pomo.remainingSecs = POMO_WORK_SECS;
+  document.getElementById('pomoBtnStart').style.display = 'inline-flex';
+  document.getElementById('pomoBtnPause').style.display = 'none';
+  updatePomodoroUI();
+}
+
+function updatePomodoroUI() {
+  var mins = Math.floor(_pomo.remainingSecs / 60);
+  var secs = _pomo.remainingSecs % 60;
+  var timeStr = (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+  var displayEl  = document.getElementById('pomoTimeDisplay');
+  var progressEl = document.getElementById('pomoProgressCircle');
+  var modeBadge  = document.getElementById('pomoModeBadge');
+  var sessionLbl = document.getElementById('pomoSessionLabel');
+  if (!displayEl || !progressEl || !modeBadge || !sessionLbl) return;
+
+  displayEl.textContent = timeStr;
+
+  var pct = _pomo.remainingSecs / _pomo.totalSecs;
+  var offset = POMO_CIRCUMFERENCE * (1 - pct);
+  progressEl.style.strokeDashoffset = offset;
+
+  if (_pomo.isBreak) {
+    progressEl.style.stroke = 'var(--neon-blue)';
+    modeBadge.textContent = 'Break Time';
+    modeBadge.className = 'pomodoro-mode-badge break';
+    sessionLbl.textContent = 'Session ' + _pomo.session + ' · Break';
+  } else {
+    progressEl.style.stroke = 'var(--neon-green)';
+    modeBadge.textContent = 'Work Session';
+    modeBadge.className = 'pomodoro-mode-badge work';
+    sessionLbl.textContent = 'Session ' + _pomo.session + ' · Work';
+  }
+}
+
+// ===================== FEATURE 3: AI INSIGHTS =====================
+function computeNebulaInsights() {
+  var insights = [];
+  var completions = state.completions;
+  var habits = state.habits;
+  if (!habits || habits.length === 0) {
+    insights.push({ color: 'var(--neon-blue)', text: 'Add your first habit in <strong>Setup</strong> to unlock personalized recommendations.' });
+    return insights;
+  }
+
+  // 1. Best streak day of week
+  var dayCounts = [0,0,0,0,0,0,0];
+  var dayTotals = [0,0,0,0,0,0,0];
+  var dayNames  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  Object.keys(completions).forEach(function(k) {
+    var d = new Date(k); var dow = d.getDay();
+    var done = habits.filter(function(h) { return completions[k] && completions[k][h.id]; }).length;
+    dayCounts[dow] += done; dayTotals[dow]++;
+  });
+  var bestDow = 0, bestAvg = 0;
+  for (var i = 0; i < 7; i++) {
+    var avg = dayTotals[i] ? dayCounts[i] / dayTotals[i] : 0;
+    if (avg > bestAvg) { bestAvg = avg; bestDow = i; }
+  }
+  if (dayTotals[bestDow] > 0) {
+    insights.push({ color: 'var(--neon-green)', text: 'You perform best on <strong>' + dayNames[bestDow] + 's</strong> — that\'s your power day. Plan your hardest habits there.' });
+  }
+
+  // 2. Most neglected category
+  var catDone = {}, catTotal = {};
+  habits.forEach(function(h) {
+    var cat = h.category;
+    if (!catDone[cat]) { catDone[cat] = 0; catTotal[cat] = 0; }
+  });
+  Object.keys(completions).forEach(function(k) {
+    habits.forEach(function(h) {
+      var cat = h.category;
+      catTotal[cat] = (catTotal[cat]||0) + 1;
+      if (completions[k] && completions[k][h.id]) catDone[cat] = (catDone[cat]||0) + 1;
+    });
+  });
+  var worstCat = null, worstPct = 101;
+  Object.keys(catTotal).forEach(function(cat) {
+    if (catTotal[cat] > 0) {
+      var pct = (catDone[cat]||0) / catTotal[cat] * 100;
+      if (pct < worstPct) { worstPct = pct; worstCat = cat; }
+    }
+  });
+  if (worstCat) {
+    insights.push({ color: 'var(--neon-amber)', text: '<strong>' + worstCat + '</strong> has the lowest completion rate (' + Math.round(worstPct) + '%). Consider making it your first daily task.' });
+  }
+
+  // 3. Today's completion momentum
+  var tKey = fmtDate(new Date());
+  var todayDone  = habits.filter(function(h) { return completions[tKey] && completions[tKey][h.id]; }).length;
+  var todayTotal = habits.length;
+  if (todayDone === todayTotal && todayTotal > 0) {
+    insights.push({ color: 'var(--neon-purple)', text: '🔥 You\'ve completed <strong>all ' + todayTotal + ' habits</strong> today! Perfect day — XP bonus earned.' });
+  } else if (todayDone > 0 && todayDone < todayTotal) {
+    insights.push({ color: 'var(--neon-blue)', text: 'You\'re <strong>' + todayDone + '/' + todayTotal + '</strong> today. Just ' + (todayTotal - todayDone) + ' habit' + (todayTotal-todayDone>1?'s':'') + ' left — you\'re almost there!' });
+  } else if (todayDone === 0) {
+    insights.push({ color: 'var(--neon-pink)', text: 'No habits logged today yet. <strong>Start now</strong> — even one completion builds momentum.' });
+  }
+
+  // 4. XP milestone hint
+  loadXP();
+  var lvl = _xpState.level;
+  var nextThresh = XP_THRESHOLDS[lvl] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1];
+  var remaining  = Math.max(0, nextThresh - _xpState.xp);
+  var habitsNeeded = Math.ceil(remaining / XP_PER_COMPLETION);
+  if (remaining > 0 && habitsNeeded > 0) {
+    insights.push({ color: 'var(--neon-purple)', text: 'Complete <strong>' + habitsNeeded + ' more habit' + (habitsNeeded>1?'s':'') + '</strong> to reach <strong>Level ' + (lvl+1) + '</strong>. Keep going!' });
+  }
+
+  return insights.slice(0, 4);
+}
+
+function renderNebulaInsights() {
+  var body = document.getElementById('nebulaInsightsBody');
+  if (!body) return;
+  var insights = computeNebulaInsights();
+  body.innerHTML = '';
+  insights.forEach(function(ins) {
+    var item = document.createElement('div');
+    item.className = 'insight-item';
+    item.innerHTML =
+      '<div class="insight-dot" style="color:' + ins.color + ';background:' + ins.color + '"></div>' +
+      '<div class="insight-text">' + ins.text + '</div>';
+    body.appendChild(item);
+  });
+}
+
+// ===================== HOOK NEW FEATURES INTO EXISTING FLOW =====================
+// Patch toggleHabitDay to award XP on completion (non-destructive wrap)
+var _origToggleHabitDay = toggleHabitDay;
+toggleHabitDay = function(dateKey, hid, el) {
+  var wasChecked = !!(state.completions[dateKey] && state.completions[dateKey][hid]);
+  _origToggleHabitDay(dateKey, hid, el);
+  // Award XP only when marking as complete (not unchecking)
+  var isNowChecked = !!(state.completions[dateKey] && state.completions[dateKey][hid]);
+  if (!wasChecked && isNowChecked) { addXP(XP_PER_COMPLETION); }
+  renderXPBar();
+  renderNebulaInsights();
+};
+
+// Patch renderAll to always refresh XP bar and insights
+var _origRenderAll = renderAll;
+renderAll = function() {
+  _origRenderAll();
+  renderXPBar();
+  renderNebulaInsights();
+};
+
 // Close confirm overlay on outside click
 document.addEventListener('click', function(e){
   var overlay = document.getElementById('confirmOverlay');
   if(e.target === overlay) hideResetConfirm();
+  var ltOverlay = document.getElementById('ltModalOverlay');
+  if(e.target === ltOverlay) ltCloseAddModal();
 });
 
 // Keyboard: Escape closes modals
@@ -1695,6 +2408,7 @@ document.addEventListener('keydown', function(e){
   if(e.key==='Escape' || e.keyCode===27){
     closeModal();
     hideResetConfirm();
+    ltCloseAddModal();
   }
 });
 
@@ -1704,6 +2418,428 @@ if(document.readyState === 'loading'){
 } else {
   init();
 }
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  NEW FEATURE 1 — INTERVAL & LONG-TERM HABITS SYSTEM                ║
+// ║  Storage key: nebula_longTermHabits  (fully isolated)              ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+var LT_STORAGE_KEY = 'nebula_longTermHabits';
+var _ltHabits = [];   // [{id, name, emoji, intervalDays, xpReward, lastCompleted}]
+
+function ltLoad() {
+  try {
+    var raw = _safeStorage.getItem(LT_STORAGE_KEY);
+    if (raw) { var p = JSON.parse(raw); if (Array.isArray(p)) _ltHabits = p; }
+  } catch(e) {}
+}
+
+function ltSave() {
+  try { _safeStorage.setItem(LT_STORAGE_KEY, JSON.stringify(_ltHabits)); } catch(e) {}
+}
+
+// Compute how many days until next due for a habit
+function ltDaysUntilDue(habit) {
+  if (!habit.lastCompleted) return 0; // never done → overdue/due now
+  var last = new Date(habit.lastCompleted);
+  var next = new Date(last.getTime() + habit.intervalDays * 86400000);
+  var now2 = new Date();
+  var diffMs = next.getTime() - now2.getTime();
+  return Math.ceil(diffMs / 86400000);
+}
+
+function ltIsDue(habit) {
+  return ltDaysUntilDue(habit) <= 0;
+}
+
+function ltRenderGrid() {
+  var grid = document.getElementById('ltGrid');
+  if (!grid) return;
+  ltLoad();
+
+  if (_ltHabits.length === 0) {
+    grid.innerHTML =
+      '<div class="lt-empty">' +
+        '<i class="fas fa-hourglass-start"></i>' +
+        '<div style="font-size:14px;color:var(--text-secondary);font-weight:600;margin-bottom:4px;">No interval habits yet</div>' +
+        '<div>Create habits that repeat every few days, weeks, or months — like cleaning filters, deep-cleaning, or monthly reviews.</div>' +
+      '</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  _ltHabits.forEach(function(habit) {
+    var daysLeft = ltDaysUntilDue(habit);
+    var due = ltIsDue(habit);
+    var neverDone = !habit.lastCompleted;
+    var pct = 0;
+    if (!neverDone && !due) {
+      pct = Math.max(0, Math.min(100, 100 - (daysLeft / habit.intervalDays) * 100));
+    } else if (due) {
+      pct = 100;
+    }
+
+    var card = document.createElement('div');
+    card.className = 'lt-card' + (due ? ' lt-due' : '');
+    card.setAttribute('data-ltid', habit.id);
+
+    var countdownNumClass = due ? (neverDone ? 'lt-countdown-num' : 'lt-countdown-num overdue') : 'lt-countdown-num';
+    var countdownVal, countdownLabel;
+    if (neverDone) {
+      countdownVal = '!';
+      countdownLabel = 'Not started — tap to complete!';
+    } else if (due) {
+      var overdueDays = Math.abs(daysLeft);
+      countdownVal = overdueDays;
+      countdownLabel = overdueDays === 0 ? 'Due today!' : 'day' + (overdueDays === 1 ? '' : 's') + ' overdue';
+    } else {
+      countdownVal = daysLeft;
+      countdownLabel = 'day' + (daysLeft === 1 ? '' : 's') + ' remaining';
+    }
+
+    var intervalLabel = '';
+    if (habit.intervalDays === 1) intervalLabel = 'Every day';
+    else if (habit.intervalDays % 30 === 0) intervalLabel = 'Every ' + (habit.intervalDays / 30) + ' month' + (habit.intervalDays / 30 > 1 ? 's' : '');
+    else if (habit.intervalDays % 7 === 0) intervalLabel = 'Every ' + (habit.intervalDays / 7) + ' week' + (habit.intervalDays / 7 > 1 ? 's' : '');
+    else intervalLabel = 'Every ' + habit.intervalDays + ' days';
+
+    card.innerHTML =
+      '<div class="lt-card-header">' +
+        '<div class="lt-card-left">' +
+          '<div class="lt-card-emoji">' + (habit.emoji || '🔁') + '</div>' +
+          '<div class="lt-card-info">' +
+            '<div class="lt-card-name">' + escapeHtml(habit.name) + '</div>' +
+            '<div class="lt-card-interval"><i class="fas fa-redo" style="font-size:9px;margin-inline-end:4px;opacity:0.6;"></i>' + intervalLabel + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="lt-card-del" onclick="ltDeleteHabit(\'' + habit.id + '\')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+      '</div>' +
+      '<div class="lt-countdown">' +
+        '<div class="' + countdownNumClass + '">' + countdownVal + '</div>' +
+        '<div class="lt-countdown-label">' + escapeHtml(String(countdownLabel)) + '</div>' +
+      '</div>' +
+      '<div class="lt-progress-wrap"><div class="lt-progress-fill" style="width:' + pct + '%;' + (due ? 'background:var(--neon-amber);' : '') + '"></div></div>' +
+      '<button class="lt-complete-btn' + (due ? ' lt-due-btn' : '') + '" onclick="ltComplete(\'' + habit.id + '\')">' +
+        '<i class="fas fa-' + (due ? 'star' : 'check') + '"></i> ' + (due ? 'Mark Complete — Collect XP!' : 'Complete Early') +
+      '</button>' +
+      '<div class="lt-xp-burst">+' + habit.xpReward + ' XP on completion</div>';
+
+    grid.appendChild(card);
+  });
+}
+
+function ltOpenAddModal() {
+  document.getElementById('ltName').value = '';
+  document.getElementById('ltEmoji').value = '🔁';
+  document.getElementById('ltIntervalDays').value = '7';
+  document.getElementById('ltIntervalUnit').value = 'days';
+  document.getElementById('ltXpReward').value = '500';
+  document.getElementById('ltModalOverlay').classList.add('show');
+  setTimeout(function(){ document.getElementById('ltName').focus(); }, 80);
+}
+
+function ltCloseAddModal() {
+  document.getElementById('ltModalOverlay').classList.remove('show');
+}
+
+function ltSaveNewHabit() {
+  var name = document.getElementById('ltName').value.trim();
+  if (!name) { showToast('Enter a habit name', 'info'); return; }
+  var emoji = document.getElementById('ltEmoji').value.trim() || '🔁';
+  var num   = parseInt(document.getElementById('ltIntervalDays').value) || 7;
+  var unit  = document.getElementById('ltIntervalUnit').value;
+  var xpRew = parseInt(document.getElementById('ltXpReward').value) || 500;
+  var days  = num;
+  if (unit === 'weeks')  days = num * 7;
+  if (unit === 'months') days = num * 30;
+  ltLoad();
+  _ltHabits.push({
+    id: 'lt' + Date.now(),
+    name: name, emoji: emoji,
+    intervalDays: days, xpReward: xpRew,
+    lastCompleted: null
+  });
+  ltSave();
+  ltCloseAddModal();
+  ltRenderGrid();
+  nebulaBadgeUpdate();
+  showToast('Interval habit added ✓', 'success');
+}
+
+function ltComplete(habitId) {
+  ltLoad();
+  var habit = null;
+  for (var i = 0; i < _ltHabits.length; i++) {
+    if (_ltHabits[i].id === habitId) { habit = _ltHabits[i]; break; }
+  }
+  if (!habit) return;
+  habit.lastCompleted = Date.now();
+  ltSave();
+
+  // Award large XP burst
+  addXP(habit.xpReward);
+  renderXPBar();
+  renderNebulaInsights();
+
+  // Confetti burst
+  if (typeof confetti === 'function') {
+    confetti({ particleCount: 160, spread: 90, origin: { y: 0.55 }, colors: ['#fbbf24','#a855f7','#34d399','#f472b6','#38bdf8'] });
+    setTimeout(function() {
+      confetti({ particleCount: 80, angle: 60,  spread: 60, origin: { x: 0, y: 0.6 }, colors: ['#fbbf24','#a855f7'] });
+      confetti({ particleCount: 80, angle: 120, spread: 60, origin: { x: 1, y: 0.6 }, colors: ['#34d399','#38bdf8'] });
+    }, 350);
+  }
+
+  // Level-up overlay re-use for XP burst feedback
+  var overlay = document.getElementById('levelUpOverlay');
+  var text    = document.getElementById('levelUpText');
+  if (overlay && text) {
+    text.textContent = '⭐ +' + habit.xpReward + ' XP — ' + habit.name + ' Complete!';
+    overlay.classList.remove('show');
+    void overlay.offsetWidth;
+    overlay.classList.add('show');
+    setTimeout(function() { overlay.classList.remove('show'); }, 2400);
+  }
+
+  ltRenderGrid();
+  nebulaBadgeUpdate();
+  showToast('+' + habit.xpReward + ' XP — Great work! 🏆', 'success');
+}
+
+function ltDeleteHabit(habitId) {
+  ltLoad();
+  _ltHabits = _ltHabits.filter(function(h) { return h.id !== habitId; });
+  ltSave();
+  ltRenderGrid();
+  nebulaBadgeUpdate();
+  showToast('Interval habit removed', 'info');
+}
+
+function ltCountDueHabits() {
+  ltLoad();
+  return _ltHabits.filter(ltIsDue).length;
+}
+
+function ltInit() {
+  ltLoad();
+  ltRenderGrid();
+  // Hide notif bar if already granted or dismissed
+  ltUpdateNotifBar();
+}
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  NEW FEATURE 2 — SMART LOCAL PUSH NOTIFICATIONS                    ║
+// ║  Storage keys: nebula_notif_dismissed, nebula_notif_fired          ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+var _notifDismissed = false;
+// Track which notification keys fired today to avoid spamming
+function _notifTodayKey(tag) { return 'nebula_notif_fired_' + tag + '_' + fmtDate(new Date()); }
+
+function ltUpdateNotifBar() {
+  var bar = document.getElementById('notifPermissionBar');
+  if (!bar) return;
+  var dismissed = _safeStorage.getItem('nebula_notif_dismissed') === '1';
+  var granted   = ('Notification' in window) && Notification.permission === 'granted';
+  var supported = 'Notification' in window;
+  if (!supported || dismissed || granted) {
+    bar.classList.add('hidden');
+  } else {
+    bar.classList.remove('hidden');
+  }
+}
+
+function ltDismissNotifBar() {
+  _safeStorage.setItem('nebula_notif_dismissed', '1');
+  ltUpdateNotifBar();
+}
+
+function ltRequestNotificationPermission() {
+  if (!('Notification' in window)) {
+    showToast('Notifications not supported in this browser', 'info');
+    return;
+  }
+  Notification.requestPermission().then(function(perm) {
+    ltUpdateNotifBar();
+    if (perm === 'granted') {
+      showToast('Notifications enabled! 🔔', 'success');
+      nebulaNotifCheckDueHabits();
+    } else {
+      showToast('Notifications blocked — you can enable in browser settings', 'info');
+    }
+  }).catch(function() {
+    // Older browsers use callback style
+    Notification.requestPermission(function(perm) {
+      ltUpdateNotifBar();
+      if (perm === 'granted') {
+        showToast('Notifications enabled! 🔔', 'success');
+        nebulaNotifCheckDueHabits();
+      }
+    });
+  });
+}
+
+function _nebulaFireNotif(title, body, tag, icon) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  var firedKey = _notifTodayKey(tag);
+  if (_safeStorage.getItem(firedKey) === '1') return; // already fired today
+  try {
+    var opts = { body: body, tag: tag, icon: icon || 'logo.png', badge: 'logo.png', silent: false };
+    new Notification(title, opts);
+    _safeStorage.setItem(firedKey, '1');
+  } catch(e) {}
+}
+
+function nebulaNotifCheckDueHabits() {
+  ltLoad();
+  var dueList = _ltHabits.filter(ltIsDue);
+  if (dueList.length === 0) return;
+  var names = dueList.map(function(h){ return h.emoji + ' ' + h.name; }).join(', ');
+  var title = dueList.length === 1
+    ? '⏰ Interval Habit Due!'
+    : '⏰ ' + dueList.length + ' Interval Habits Due!';
+  var body = names + '\nOpen Nebula to complete and collect XP!';
+  _nebulaFireNotif(title, body, 'lt-due', 'logo.png');
+}
+
+function nebulaNotifCheckEveningReminder() {
+  var h = new Date().getHours();
+  if (h < 17 || h >= 22) return; // only 17:00–22:00
+  var tKey = fmtDate(new Date());
+  var totalHabits = state.habits.length;
+  if (totalHabits === 0) return;
+  var doneTodayCount = state.habits.filter(function(hb) {
+    return state.completions[tKey] && state.completions[tKey][hb.id];
+  }).length;
+  if (doneTodayCount >= totalHabits) return; // all done!
+  var remaining = totalHabits - doneTodayCount;
+  _nebulaFireNotif(
+    '🌙 Evening Habit Reminder',
+    'You have ' + remaining + ' habit' + (remaining > 1 ? 's' : '') + ' left today. Don\'t break your streak — open Nebula now!',
+    'evening-reminder',
+    'logo.png'
+  );
+}
+
+function nebulaNotifInit() {
+  if (!('Notification' in window)) return;
+  ltUpdateNotifBar();
+  if (Notification.permission !== 'granted') return;
+  // Run checks on app open
+  setTimeout(nebulaNotifCheckDueHabits, 1500);
+  setTimeout(nebulaNotifCheckEveningReminder, 2500);
+  // Re-check every hour while the app is open
+  setInterval(nebulaNotifCheckDueHabits, 3600000);
+  setInterval(nebulaNotifCheckEveningReminder, 3600000);
+}
+
+// ╔══════════════════════════════════════════════════════════════════════╗
+// ║  NEW FEATURE 3 — APP BADGE API + PWA SHORTCUTS PREPARATION         ║
+// ╚══════════════════════════════════════════════════════════════════════╝
+function nebulaBadgeUpdate() {
+  if (!('setAppBadge' in navigator)) return;
+  try {
+    var tKey = fmtDate(new Date());
+    var totalDaily    = state.habits.length;
+    var doneDaily     = state.habits.filter(function(hb) {
+      return state.completions[tKey] && state.completions[tKey][hb.id];
+    }).length;
+    var pendingDaily  = Math.max(0, totalDaily - doneDaily);
+    var pendingLtDue  = ltCountDueHabits();
+    var badgeCount    = pendingDaily + pendingLtDue;
+    if (badgeCount > 0) {
+      navigator.setAppBadge(badgeCount).catch(function(){});
+    } else {
+      navigator.clearAppBadge().catch(function(){});
+    }
+  } catch(e) {}
+}
+
+// Patch toggleHabitDay to also update the badge
+var _origToggleHabitDayBadge = toggleHabitDay;
+toggleHabitDay = function(dateKey, hid, el) {
+  _origToggleHabitDayBadge(dateKey, hid, el);
+  nebulaBadgeUpdate();
+};
+
+// PWA Shortcuts: inject an enriched manifest dynamically with shortcuts
+// (replaces the inline data-URI manifest so shortcuts work on supported platforms)
+(function() {
+  var shortcutManifest = {
+    name: "Nebula \u2014 Habit Tracker",
+    short_name: "Nebula",
+    start_url: "./",
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#0b0f17",
+    theme_color: "#0b0f17",
+    lang: "ar",
+    shortcuts: [
+      {
+        name: "Daily Tracker",
+        short_name: "Tracker",
+        description: "Open the monthly heatmap tracker",
+        url: "./?shortcut=tracker",
+        icons: [{ src: "logo.png", sizes: "96x96" }]
+      },
+      {
+        name: "Notes & Journal",
+        short_name: "Journal",
+        description: "Open the notes and journal section",
+        url: "./?shortcut=notes",
+        icons: [{ src: "logo.png", sizes: "96x96" }]
+      },
+      {
+        name: "Interval Habits",
+        short_name: "Intervals",
+        description: "View due interval & long-term habits",
+        url: "./?shortcut=longterm",
+        icons: [{ src: "logo.png", sizes: "96x96" }]
+      }
+    ],
+    icons: [
+      { src: "logo.png", sizes: "192x192", type: "image/png" },
+      { src: "logo.png", sizes: "512x512", type: "image/png" }
+    ]
+  };
+
+  try {
+    var blob = new Blob([JSON.stringify(shortcutManifest)], { type: 'application/manifest+json' });
+    var url  = URL.createObjectURL(blob);
+    var existing = document.querySelector('link[rel="manifest"]');
+    if (existing) {
+      existing.href = url;
+    } else {
+      var link = document.createElement('link');
+      link.rel  = 'manifest';
+      link.href = url;
+      document.head.appendChild(link);
+    }
+  } catch(e) {}
+
+  // Handle shortcut deep-link on app open
+  try {
+    var urlParams = new URLSearchParams(window.location.search);
+    var sc = urlParams.get('shortcut');
+    if (sc) {
+      setTimeout(function() {
+        var navItems = document.querySelectorAll('.nav-item');
+        for (var i = 0; i < navItems.length; i++) {
+          var onclick = navItems[i].getAttribute('onclick') || '';
+          if (onclick.indexOf("'" + sc + "'") !== -1 || onclick.indexOf('"' + sc + '"') !== -1) {
+            navItems[i].click();
+            break;
+          }
+        }
+      }, 400);
+    }
+  } catch(e) {}
+})();
+
+// Patch _origRenderAll to also update badge on every render
+var _origRenderAllBadge = renderAll;
+renderAll = function() {
+  _origRenderAllBadge();
+  nebulaBadgeUpdate();
+};
 </script>
 </body>
 </html>
