@@ -7,17 +7,71 @@
 
 <meta name="mobile-web-app-capable" content="yes">
 <script>
-  // ===== SECURITY: منع الكليك يمين و DevTools =====
-  document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
-  document.addEventListener('keydown', function(e){
-    if(e.keyCode===123) { e.preventDefault(); return false; }
-    if(e.ctrlKey && e.shiftKey && (e.keyCode===73||e.keyCode===74||e.keyCode===67)) { e.preventDefault(); return false; }
-    if(e.ctrlKey && e.keyCode===85) { e.preventDefault(); return false; }
-    if(e.ctrlKey && e.keyCode===83) { e.preventDefault(); return false; }
-  });
-  // منع drag
-  document.addEventListener('dragstart', function(e){ e.preventDefault(); return false; });
-  // selectstart prevention removed — it blocks iOS Safari text input focus
+  // ===== SECURITY: Anti-Debug + DevTools Detection (Bot/Preview Safe) =====
+
+  // ── Bot & Automated Preview Detection ────────────────────────────────────
+  // Vercel screenshot bots, headless Chromium, Playwright, Puppeteer, and any
+  // automated iframe preview will be detected here and bypass ALL protections,
+  // which fixes "No Screenshot Available" on Vercel deployment previews.
+  var _isBot = (function() {
+    try {
+      if (window.self !== window.top) return true; // inside an iframe (Vercel preview)
+      var ua = navigator.userAgent || '';
+      if (/HeadlessChrome|PhantomJS|SlimerJS|Electron|Prerender|bot|crawl|spider/i.test(ua)) return true;
+      if (navigator.webdriver) return true; // Selenium / Playwright / Puppeteer flag
+      if (window.screen && window.screen.width === 0 && window.screen.height === 0) return true;
+    } catch(e) {}
+    return false;
+  })();
+
+  // ── UI Protections — real browsers only, bots fully excluded ─────────────
+  if (!_isBot) {
+    document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+    document.addEventListener('keydown', function(e){
+      if(e.keyCode===123) { e.preventDefault(); return false; } // F12
+      if(e.ctrlKey && e.shiftKey && (e.keyCode===73||e.keyCode===74||e.keyCode===67)) { e.preventDefault(); return false; } // Ctrl+Shift+I/J/C
+      if(e.ctrlKey && e.keyCode===85) { e.preventDefault(); return false; } // Ctrl+U
+      if(e.ctrlKey && e.keyCode===83) { e.preventDefault(); return false; } // Ctrl+S
+    });
+    document.addEventListener('dragstart', function(e){ e.preventDefault(); return false; });
+    // Note: selectstart intentionally excluded — it breaks iOS Safari text input focus
+
+    // ── Lightweight DevTools Detection — throttled at 1500ms, idle-aware ────
+    // Uses window size delta (reliable cross-browser). Runs via requestIdleCallback
+    // so it never fires during scroll, animation, or heavy render — zero CPU impact
+    // on mobile. No debugger; statement — no infinite loops — no freeze risk.
+    (function() {
+      var _DT_THRESHOLD  = 160;  // px gap that reliably indicates an open DevTools panel
+      var _dtLastCheck   = 0;
+      var _dtInterval    = 1500; // ms — safe for all mobile CPUs
+
+      function _checkDevTools() {
+        var now = Date.now();
+        if (now - _dtLastCheck < _dtInterval) return;
+        _dtLastCheck = now;
+        var wDiff = window.outerWidth  - window.innerWidth;
+        var hDiff = window.outerHeight - window.innerHeight;
+        if (wDiff > _DT_THRESHOLD || hDiff > _DT_THRESHOLD) {
+          // DevTools detected — clear page content non-destructively
+          clearInterval(_dtTimer);
+          document.documentElement.innerHTML =
+            '<body style="background:#0b0f17;color:#64748b;font-family:sans-serif;' +
+            'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">' +
+            '<p style="font-size:16px;text-align:center;">⚠️ Developer tools detected.<br>' +
+            '<span style="font-size:13px;opacity:0.6;">Close DevTools and reload to continue.</span></p>' +
+            '</body>';
+        }
+      }
+
+      var _dtTimer = setInterval(function() {
+        if (typeof requestIdleCallback === 'function') {
+          requestIdleCallback(_checkDevTools, { timeout: _dtInterval });
+        } else {
+          _checkDevTools();
+        }
+      }, _dtInterval);
+    })();
+  }
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -1357,12 +1411,33 @@ function init(){
   initQuotes();
   renderXPBar();
   renderNebulaInsights();
-  // Register Service Worker for PWA offline mode — called directly (DOM already ready)
+  // ── Service Worker: register + auto-reload on new Vercel deployment ─────
+  // skipWaiting() in sw.js activates the new worker instantly on each deploy.
+  // The controllerchange + updatefound listeners here reload the tab once so
+  // users always see the latest build without a manual hard refresh.
   if ('serviceWorker' in navigator) {
+    var _swRefreshing = false;
+
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
-      console.log('[SW] Registered, scope:', reg.scope);
+      // updatefound fires whenever a new SW version starts installing
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', function() {
+          // Once the new SW is fully activated and controlling the page, reload
+          if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+            if (!_swRefreshing) { _swRefreshing = true; window.location.reload(); }
+          }
+        });
+      });
     }).catch(function(err) {
-      console.warn('[SW] Registration failed (non-critical):', err);
+      // Non-critical — app works fine without the SW
+      console.warn('[SW] Registration failed:', err);
+    });
+
+    // Safety net: catches skipWaiting() triggered from another tab
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+      if (!_swRefreshing) { _swRefreshing = true; window.location.reload(); }
     });
   }
   setInterval(function(){ updateGreeting(); updateDateChip(); }, 60000);
