@@ -7,71 +7,57 @@
 
 <meta name="mobile-web-app-capable" content="yes">
 <script>
-  // ===== SECURITY: Anti-Debug + DevTools Detection (Bot/Preview Safe) =====
+  /* ================================================================
+     NEBULA — DOMAIN LOCK  (runs synchronously, first script in head)
+     Allowed: your production hostname + localhost for local dev.
+     ► SET YOUR OFFICIAL DOMAIN BELOW ◄
+  ================================================================ */
+  (function () {
+    var ALLOWED = [
+      'nepulahabits.vercel.app', // ← replace with your real domain
+      'localhost',
+      '127.0.0.1'
+    ];
+    var host = (window.location.hostname || '').toLowerCase().replace(/^www\./, '');
+    if (ALLOWED.indexOf(host) !== -1) return; // authorised — do nothing
 
-  // ── Bot & Automated Preview Detection ────────────────────────────────────
-  // Vercel screenshot bots, headless Chromium, Playwright, Puppeteer, and any
-  // automated iframe preview will be detected here and bypass ALL protections,
-  // which fixes "No Screenshot Available" on Vercel deployment previews.
-  var _isBot = (function() {
-    try {
-      if (window.self !== window.top) return true; // inside an iframe (Vercel preview)
-      var ua = navigator.userAgent || '';
-      if (/HeadlessChrome|PhantomJS|SlimerJS|Electron|Prerender|bot|crawl|spider/i.test(ua)) return true;
-      if (navigator.webdriver) return true; // Selenium / Playwright / Puppeteer flag
-      if (window.screen && window.screen.width === 0 && window.screen.height === 0) return true;
-    } catch(e) {}
-    return false;
-  })();
-
-  // ── UI Protections — real browsers only, bots fully excluded ─────────────
-  if (!_isBot) {
-    document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
-    document.addEventListener('keydown', function(e){
-      if(e.keyCode===123) { e.preventDefault(); return false; } // F12
-      if(e.ctrlKey && e.shiftKey && (e.keyCode===73||e.keyCode===74||e.keyCode===67)) { e.preventDefault(); return false; } // Ctrl+Shift+I/J/C
-      if(e.ctrlKey && e.keyCode===85) { e.preventDefault(); return false; } // Ctrl+U
-      if(e.ctrlKey && e.keyCode===83) { e.preventDefault(); return false; } // Ctrl+S
+    /* Unauthorised host: wipe the document and show Access Denied */
+    document.addEventListener('DOMContentLoaded', function () {
+      document.documentElement.innerHTML =
+        '<!DOCTYPE html><html><head>' +
+        '<meta charset="UTF-8">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+        '<title>Access Denied</title>' +
+        '<style>' +
+          '*{margin:0;padding:0;box-sizing:border-box}' +
+          'body{min-height:100vh;background:#0b0f17;display:flex;' +
+               'align-items:center;justify-content:center;' +
+               'font-family:system-ui,sans-serif;-webkit-font-smoothing:antialiased}' +
+          '.box{background:#111827;border:1px solid rgba(239,68,68,0.25);' +
+               'border-radius:20px;padding:52px 44px;max-width:440px;width:calc(100vw - 40px);' +
+               'text-align:center;box-shadow:0 0 60px rgba(239,68,68,0.1)}' +
+          '.icon{font-size:48px;margin-bottom:20px}' +
+          'h1{color:#ef4444;font-size:22px;font-weight:800;margin-bottom:10px}' +
+          'p{color:#64748b;font-size:14px;line-height:1.7}' +
+          'code{color:#94a3b8;background:rgba(255,255,255,0.06);' +
+               'padding:2px 8px;border-radius:6px;font-size:13px}' +
+        '</style>' +
+        '</head><body>' +
+          '<div class="box">' +
+            '<div class="icon">&#128274;</div>' +
+            '<h1>Access Denied</h1>' +
+            '<p>This application is not authorised to run on<br>' +
+            '<code>' + document.createElement('span').appendChild(
+                          document.createTextNode(window.location.hostname)
+                        ) + window.location.hostname + '</code>.<br><br>' +
+            'Please access the app through its official URL.</p>' +
+          '</div>' +
+        '</body></html>';
     });
-    document.addEventListener('dragstart', function(e){ e.preventDefault(); return false; });
-    // Note: selectstart intentionally excluded — it breaks iOS Safari text input focus
 
-    // ── Lightweight DevTools Detection — throttled at 1500ms, idle-aware ────
-    // Uses window size delta (reliable cross-browser). Runs via requestIdleCallback
-    // so it never fires during scroll, animation, or heavy render — zero CPU impact
-    // on mobile. No debugger; statement — no infinite loops — no freeze risk.
-    (function() {
-      var _DT_THRESHOLD  = 160;  // px gap that reliably indicates an open DevTools panel
-      var _dtLastCheck   = 0;
-      var _dtInterval    = 1500; // ms — safe for all mobile CPUs
-
-      function _checkDevTools() {
-        var now = Date.now();
-        if (now - _dtLastCheck < _dtInterval) return;
-        _dtLastCheck = now;
-        var wDiff = window.outerWidth  - window.innerWidth;
-        var hDiff = window.outerHeight - window.innerHeight;
-        if (wDiff > _DT_THRESHOLD || hDiff > _DT_THRESHOLD) {
-          // DevTools detected — clear page content non-destructively
-          clearInterval(_dtTimer);
-          document.documentElement.innerHTML =
-            '<body style="background:#0b0f17;color:#64748b;font-family:sans-serif;' +
-            'display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">' +
-            '<p style="font-size:16px;text-align:center;">⚠️ Developer tools detected.<br>' +
-            '<span style="font-size:13px;opacity:0.6;">Close DevTools and reload to continue.</span></p>' +
-            '</body>';
-        }
-      }
-
-      var _dtTimer = setInterval(function() {
-        if (typeof requestIdleCallback === 'function') {
-          requestIdleCallback(_checkDevTools, { timeout: _dtInterval });
-        } else {
-          _checkDevTools();
-        }
-      }, _dtInterval);
-    })();
-  }
+    /* Also stop inline scripts from running by throwing synchronously */
+    throw new Error('[Nebula] Unauthorised domain: ' + window.location.hostname);
+  })();
 </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -753,6 +739,67 @@ html[dir="ltr"] .toast { right:28px; }
 .lt-empty { text-align: center; padding: 36px 20px; color: var(--text-muted); font-size: 13px; background: var(--bg-card); border: 1px dashed rgba(255,255,255,0.06); border-radius: var(--radius); }
 .lt-empty i { font-size: 32px; display: block; margin-bottom: 10px; opacity: 0.25; }
 
+/* ===== TIME PICKER STYLING ===== */
+.lt-time-field { display: flex; flex-direction: column; flex: 0 0 140px; min-width: 120px; }
+.lt-time-field label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 5px; font-weight: 500; }
+.lt-time-input {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 11px 14px; color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s; width: 100%;
+  -webkit-appearance: none; appearance: none; color-scheme: dark;
+}
+.lt-time-input:focus { border-color: var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple-glow); }
+.lt-time-input::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(5) hue-rotate(250deg);
+  cursor: pointer; opacity: 0.7; transition: opacity 0.2s;
+}
+.lt-time-input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+.lt-card-reminder {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--neon-purple); font-weight: 600;
+  background: rgba(168,85,247,0.10); border: 1px solid rgba(168,85,247,0.22);
+  border-radius: 8px; padding: 3px 8px; margin-top: 4px;
+}
+.lt-card-reminder i { font-size: 10px; }
+
+/* ===== DAYS OF WEEK SELECTOR ===== */
+.lt-days-label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 8px; font-weight: 500; }
+.lt-days-row {
+  display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.lt-day-btn {
+  flex: 1; min-width: 38px; padding: 8px 4px; border-radius: 10px;
+  border: 1px solid rgba(168,85,247,0.25);
+  background: rgba(168,85,247,0.06);
+  color: var(--text-muted); font-family: inherit; font-size: 11px; font-weight: 700;
+  cursor: pointer; text-align: center; transition: all 0.25s ease;
+  position: relative; overflow: hidden; user-select: none; -webkit-user-select: none;
+  letter-spacing: 0.3px;
+}
+.lt-day-btn:hover {
+  border-color: rgba(168,85,247,0.55);
+  background: rgba(168,85,247,0.12);
+  color: var(--text-primary);
+  box-shadow: 0 0 10px rgba(168,85,247,0.25);
+}
+.lt-day-btn.selected {
+  border-color: var(--neon-purple);
+  background: rgba(168,85,247,0.18);
+  color: var(--neon-purple);
+  box-shadow: 0 0 14px rgba(168,85,247,0.45), inset 0 0 8px rgba(168,85,247,0.08);
+  text-shadow: 0 0 8px rgba(168,85,247,0.7);
+}
+.lt-day-btn.selected-green {
+  border-color: var(--neon-green);
+  background: rgba(52,211,153,0.12);
+  color: var(--neon-green);
+  box-shadow: 0 0 14px rgba(52,211,153,0.35), inset 0 0 8px rgba(52,211,153,0.06);
+  text-shadow: 0 0 8px rgba(52,211,153,0.6);
+}
+.lt-days-hint { font-size: 11px; color: var(--text-muted); margin-bottom: 14px; margin-top: -6px; opacity: 0.7; }
+.lt-card-days { font-size: 11px; color: var(--neon-purple); margin-top: 3px; font-weight: 600; }
+.lt-card-days i { font-size: 9px; margin-inline-end: 4px; opacity: 0.7; }
+
 /* ===== NEW FEATURE B: NOTIFICATION PERMISSION BUTTON ===== */
 .notif-permission-bar {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
@@ -789,7 +836,7 @@ html[dir="ltr"] .toast { right:28px; }
   <div class="nav-item" onclick="navigate(this,'rewards')"><i class="fas fa-gift"></i><span class="nav-label" data-key="navRewards">Rewards</span></div>
   <div class="nav-item" onclick="navigate(this,'analytics')"><i class="fas fa-chart-line"></i><span class="nav-label" data-key="navAnalytics">Analytics</span></div>
   <div class="nav-item" onclick="navigate(this,'notes')"><i class="fas fa-book-open"></i><span class="nav-label" data-key="navNotes">Notes</span></div>
-  <div class="nav-item" onclick="navigate(this,'longterm')"><i class="fas fa-hourglass-half"></i><span class="nav-label">Interval Habits</span></div>
+  <div class="nav-item" onclick="navigate(this,'longterm')"><i class="fas fa-hourglass-half"></i><span class="nav-label" data-key="navIntervalHabits">Interval Habits</span></div>
   <div class="spacer"></div>
   <div class="user-avatar">N</div>
 </nav>
@@ -877,7 +924,7 @@ html[dir="ltr"] .toast { right:28px; }
     <div class="nebula-insights-card" id="nebulaInsightsCard">
       <div class="nebula-insights-header">
         <div class="nebula-insights-icon"><i class="fas fa-brain"></i></div>
-        <span class="nebula-insights-title">Nebula Recommendations</span>
+        <span class="nebula-insights-title" data-key="insightsTitle">Nebula Recommendations</span>
       </div>
       <div class="nebula-insights-body" id="nebulaInsightsBody">
         <div class="insight-item"><div class="insight-dot" style="color:var(--neon-purple);background:var(--neon-purple)"></div><div class="insight-text">Analyzing your habits…</div></div>
@@ -907,7 +954,7 @@ html[dir="ltr"] .toast { right:28px; }
     <!-- FEATURE 2: Pomodoro Timer (appended into tracker section) -->
     <div class="pomodoro-card" id="pomodoroCard">
       <div class="pomodoro-header">
-        <div class="pomodoro-title"><i class="fas fa-stopwatch" style="color:var(--neon-green)"></i> Pomodoro Focus Timer</div>
+        <div class="pomodoro-title"><i class="fas fa-stopwatch" style="color:var(--neon-green)"></i> <span data-key="pomoTitle">Pomodoro Focus Timer</span></div>
         <div class="pomodoro-mode-badge work" id="pomoModeBadge">Work Session</div>
       </div>
       <div class="pomodoro-ring-wrap">
@@ -926,7 +973,7 @@ html[dir="ltr"] .toast { right:28px; }
         <button class="pomo-btn pomo-btn-pause" id="pomoBtnPause" onclick="pomodoroPause()" style="display:none"><i class="fas fa-pause"></i> Pause</button>
         <button class="pomo-btn pomo-btn-reset" onclick="pomodoroReset()"><i class="fas fa-redo"></i> Reset</button>
       </div>
-      <div class="pomo-xp-hint">Complete a work session to earn <span>+100 XP</span></div>
+      <div class="pomo-xp-hint" data-key="pomoXpHint">Complete a work session to earn <span>+100 XP</span></div>
     </div>
   </section>
 
@@ -1029,17 +1076,17 @@ html[dir="ltr"] .toast { right:28px; }
 
   <!-- ===== LONG-TERM INTERVAL HABITS SECTION ===== -->
   <section class="section" id="longterm">
-    <div class="section-title"><i class="fas fa-hourglass-half" style="color:var(--neon-amber)"></i> Interval &amp; Long-Term Habits</div>
+    <div class="section-title"><i class="fas fa-hourglass-half" style="color:var(--neon-amber)"></i> <span data-key="titleIntervalHabits">Interval &amp; Long-Term Habits</span></div>
 
     <!-- Notification Permission Bar (shown if notifications not yet granted) -->
     <div class="notif-permission-bar" id="notifPermissionBar">
       <div class="notif-bar-left">
         <i class="fas fa-bell notif-bar-icon"></i>
-        <span class="notif-bar-text"><span>Enable Reminders</span> — get notified when interval habits are due &amp; for evening habit nudges</span>
+        <span class="notif-bar-text"><span data-key="notifEnableTitle">Enable Reminders</span> — <span data-key="notifEnableDesc">get notified when interval habits are due &amp; for evening habit nudges</span></span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="notif-enable-btn" onclick="ltRequestNotificationPermission()">
-          <i class="fas fa-bell"></i> Enable
+          <i class="fas fa-bell"></i> <span data-key="notifEnableBtn">Enable</span>
         </button>
         <button class="notif-dismiss-btn" onclick="ltDismissNotifBar()" title="Dismiss">✕</button>
       </div>
@@ -1047,8 +1094,8 @@ html[dir="ltr"] .toast { right:28px; }
 
     <!-- Long-term habits grid -->
     <div class="lt-section-header">
-      <div class="lt-section-title"><i class="fas fa-infinity"></i> Your Interval Habits</div>
-      <button class="lt-add-btn" onclick="ltOpenAddModal()"><i class="fas fa-plus"></i> New Interval Habit</button>
+      <div class="lt-section-title"><i class="fas fa-infinity"></i> <span data-key="ltYourHabits">Your Interval Habits</span></div>
+      <button class="lt-add-btn" onclick="ltOpenAddModal()"><i class="fas fa-plus"></i> <span data-key="ltAddBtn">New Interval Habit</span></button>
     </div>
     <div id="ltGrid" class="lt-grid"></div>
   </section>
@@ -1057,32 +1104,32 @@ html[dir="ltr"] .toast { right:28px; }
 <!-- LONG-TERM HABIT ADD MODAL -->
 <div class="lt-modal-overlay" id="ltModalOverlay">
   <div class="lt-modal">
-    <div class="lt-modal-title"><i class="fas fa-hourglass-half"></i> New Interval Habit</div>
+    <div class="lt-modal-title"><i class="fas fa-hourglass-half"></i> <span data-key="ltModalTitle">New Interval Habit</span></div>
     <div class="lt-form-row">
       <div class="lt-form-field" style="flex:2">
-        <label>Habit Name</label>
+        <label data-key="ltLabelName">Habit Name</label>
         <input type="text" id="ltName" placeholder="e.g. Clean AC Filters" maxlength="48">
       </div>
       <div class="lt-form-field" style="flex:0 0 70px">
-        <label>Emoji</label>
+        <label data-key="ltLabelEmoji">Emoji</label>
         <input type="text" id="ltEmoji" placeholder="🔧" maxlength="2" value="🔁">
       </div>
     </div>
     <div class="lt-form-row">
       <div class="lt-form-field">
-        <label>Repeat Every</label>
+        <label data-key="ltLabelRepeat">Repeat Every</label>
         <input type="number" id="ltIntervalDays" min="1" max="365" value="7" placeholder="7">
       </div>
       <div class="lt-form-field">
-        <label>Unit</label>
+        <label data-key="ltLabelUnit">Unit</label>
         <select id="ltIntervalUnit">
-          <option value="days">Days</option>
-          <option value="weeks">Weeks</option>
-          <option value="months">Months</option>
+          <option value="days" data-key="ltOptDays">Days</option>
+          <option value="weeks" data-key="ltOptWeeks">Weeks</option>
+          <option value="months" data-key="ltOptMonths">Months</option>
         </select>
       </div>
       <div class="lt-form-field">
-        <label>XP Reward</label>
+        <label data-key="ltLabelXP">XP Reward</label>
         <select id="ltXpReward">
           <option value="300">300 XP</option>
           <option value="500" selected>500 XP</option>
@@ -1090,10 +1137,27 @@ html[dir="ltr"] .toast { right:28px; }
           <option value="1000">1000 XP</option>
         </select>
       </div>
+      <div class="lt-time-field">
+        <label data-key="ltLabelReminder">Reminder Time</label>
+        <input type="time" id="ltReminderTime" class="lt-time-input">
+      </div>
+    </div>
+    <div>
+      <label class="lt-days-label"><i class="fas fa-calendar-week" style="margin-inline-end:5px;color:var(--neon-purple);font-size:10px;"></i><span data-key="ltDaysLabel">Specific Days (optional — leave blank for interval-based)</span></label>
+      <div class="lt-days-row" id="ltDaysRow">
+        <button type="button" class="lt-day-btn" data-day="Sat" onclick="ltToggleDay(this)" data-key-day="daySat">Sat</button>
+        <button type="button" class="lt-day-btn" data-day="Sun" onclick="ltToggleDay(this)" data-key-day="daySun">Sun</button>
+        <button type="button" class="lt-day-btn" data-day="Mon" onclick="ltToggleDay(this)" data-key-day="dayMon">Mon</button>
+        <button type="button" class="lt-day-btn" data-day="Tue" onclick="ltToggleDay(this)" data-key-day="dayTue">Tue</button>
+        <button type="button" class="lt-day-btn" data-day="Wed" onclick="ltToggleDay(this)" data-key-day="dayWed">Wed</button>
+        <button type="button" class="lt-day-btn" data-day="Thu" onclick="ltToggleDay(this)" data-key-day="dayThu">Thu</button>
+        <button type="button" class="lt-day-btn" data-day="Fri" onclick="ltToggleDay(this)" data-key-day="dayFri">Fri</button>
+      </div>
+      <div class="lt-days-hint" data-key="ltDaysHint">✦ Selecting days overrides the interval repeat schedule for this habit.</div>
     </div>
     <div class="lt-modal-actions">
-      <button class="lt-btn-cancel" onclick="ltCloseAddModal()">Cancel</button>
-      <button class="lt-btn-save" onclick="ltSaveNewHabit()"><i class="fas fa-check"></i> Save</button>
+      <button class="lt-btn-cancel" onclick="ltCloseAddModal()" data-key="btnCancel">Cancel</button>
+      <button class="lt-btn-save" onclick="ltSaveNewHabit()"><i class="fas fa-check"></i> <span data-key="btnSaveHabit">Save</span></button>
     </div>
   </div>
 </div>
@@ -1178,7 +1242,62 @@ var i18n = {
     notesSelectOrCreate: 'Select a note or create a new one to start writing.',
     notesTitlePlaceholder: 'Note title…', notesBodyPlaceholder: 'Start writing your thoughts…',
     notesReady: 'Ready', notesSaving: 'Saving…', notesSaved: 'Saved',
+        pomoTitle: 'Pomodoro Focus Timer',
     notesUntitled: 'Untitled Note',
+    // --- Interval Habits modal keys ---
+    ltModalTitle: 'New Interval Habit',
+    ltLabelName: 'Habit Name', ltLabelEmoji: 'Emoji',
+    ltLabelRepeat: 'Repeat Every', ltLabelUnit: 'Unit',
+    ltLabelXP: 'XP Reward', ltLabelReminder: 'Reminder Time',
+    ltOptDays: 'Days', ltOptWeeks: 'Weeks', ltOptMonths: 'Months',
+    ltDaysLabel: 'Specific Days (optional — leave blank for interval-based)',
+    ltDaysHint: '✦ Selecting days overrides the interval repeat schedule for this habit.',
+    btnCancel: 'Cancel', btnSaveHabit: 'Save',
+    daySat: 'Sat', daySun: 'Sun', dayMon: 'Mon', dayTue: 'Tue', dayWed: 'Wed', dayThu: 'Thu', dayFri: 'Fri',
+    // --- Notes extra ---
+    navIntervalHabits: 'Interval Habits',
+    titleIntervalHabits: 'Interval & Long-Term Habits',
+    notifEnableTitle: 'Enable Reminders',
+    notifEnableDesc: 'get notified when interval habits are due & for evening habit nudges',
+    notifEnableBtn: 'Enable',
+    ltYourHabits: 'Your Interval Habits',
+    ltAddBtn: 'New Interval Habit',
+    ltEmptyTitle: 'No interval habits yet',
+    ltEmptyDesc: 'Create habits that repeat every few days, weeks, or months.',
+    ltNotStarted: 'Not started — tap to complete!',
+    ltDueToday: 'Due today!',
+    ltDaysOverdue: 'day(s) overdue',
+    ltDaysRemaining: 'day(s) remaining',
+    ltMarkComplete: 'Mark Complete — Collect XP!',
+    ltCompleteEarly: 'Complete Early',
+    ltXpBurst: '+{xp} XP on completion',
+    ltIntervalEveryDay: 'Every day',
+    ltIntervalEveryWeeks: 'Every {n} week(s)',
+    ltIntervalEveryMonths: 'Every {n} month(s)',
+    ltIntervalEveryDays: 'Every {n} days',
+    ltEvery: 'Every:',
+    msgLtAdded: 'Interval habit added ✓',
+    msgLtRemoved: 'Interval habit removed',
+    msgLtCompleted: '+{xp} XP — Great work! 🏆',
+    msgEnterLtName: 'Enter a habit name',
+    msgFocusComplete: '+100 XP — Focus session complete! 🍅',
+    msgBreakOver: 'Break over! Ready for session {n}?',
+    // --- Pomodoro ---
+    pomoWorkSession: 'Work Session', pomoBreakTime: 'Break Time',
+    pomoSessionLabel: 'Session {n} · {mode}',
+    pomoWorkMode: 'Work', pomoBreakMode: 'Break',
+    pomoXpHint: 'Complete a work session to earn',
+    // --- Rewards threshold window ---
+    rewardWindow30: '30-day sustained performance required',
+    rewardProgressLabel: '{pct}% / {threshold}% (30-day avg)',
+    // --- XP Level ---
+    xpLevelBadge: 'Lv{n}',
+    xpLevelTitle: 'Level {n} — {title}',
+    xpCountLabel: '{xp} / {next} XP',
+    levelUpText: '🚀 Level Up! Level {n}',
+    // --- Insights ---
+    insightsTitle: 'Nebula Recommendations',
+    insightAnalyzing: 'Analyzing your habits…',
   },
   ar: {
     pageTitle: 'نيبولا — متتبع العادات الرقمي',
@@ -1222,7 +1341,62 @@ var i18n = {
     notesSelectOrCreate: 'اختر ملاحظة أو أنشئ واحدة جديدة للبدء.',
     notesTitlePlaceholder: 'عنوان الملاحظة…', notesBodyPlaceholder: 'ابدأ بكتابة أفكارك…',
     notesReady: 'جاهز', notesSaving: 'جارٍ الحفظ…', notesSaved: 'تم الحفظ',
+        pomoTitle: 'مؤقت بومودورو',
     notesUntitled: 'ملاحظة بلا عنوان',
+    // --- Interval Habits modal keys ---
+    ltModalTitle: 'عادة متكررة جديدة',
+    ltLabelName: 'اسم العادة', ltLabelEmoji: 'إيموجي',
+    ltLabelRepeat: 'تكرار كل', ltLabelUnit: 'الوحدة',
+    ltLabelXP: 'مكافأة XP', ltLabelReminder: 'وقت التذكير',
+    ltOptDays: 'أيام', ltOptWeeks: 'أسابيع', ltOptMonths: 'أشهر',
+    ltDaysLabel: 'أيام محددة (اختياري — اتركها فارغة للتكرار بالفترة)',
+    ltDaysHint: '✦ اختيار الأيام يلغي جدول التكرار لهذه العادة.',
+    btnCancel: 'إلغاء', btnSaveHabit: 'حفظ',
+    daySat: 'سبت', daySun: 'أحد', dayMon: 'اثن', dayTue: 'ثلا', dayWed: 'أرب', dayThu: 'خمي', dayFri: 'جمع',
+    // --- Notes extra ---
+    navIntervalHabits: 'العادات المتكررة',
+    titleIntervalHabits: 'العادات المتكررة وطويلة المدى',
+    notifEnableTitle: 'تفعيل التذكيرات',
+    notifEnableDesc: 'استلم إشعارات عند استحقاق العادات المتكررة',
+    notifEnableBtn: 'تفعيل',
+    ltYourHabits: 'عاداتك المتكررة',
+    ltAddBtn: 'عادة متكررة جديدة',
+    ltEmptyTitle: 'لا توجد عادات متكررة بعد',
+    ltEmptyDesc: 'أنشئ عادات تتكرر كل بضعة أيام أو أسابيع أو أشهر.',
+    ltNotStarted: 'لم تبدأ بعد — اضغط للإتمام!',
+    ltDueToday: 'مستحقة اليوم!',
+    ltDaysOverdue: 'يوم متأخر',
+    ltDaysRemaining: 'يوم متبقي',
+    ltMarkComplete: 'إتمام وجمع XP!',
+    ltCompleteEarly: 'إتمام مبكر',
+    ltXpBurst: '+{xp} XP عند الإتمام',
+    ltIntervalEveryDay: 'كل يوم',
+    ltIntervalEveryWeeks: 'كل {n} أسبوع/أسابيع',
+    ltIntervalEveryMonths: 'كل {n} شهر/أشهر',
+    ltIntervalEveryDays: 'كل {n} أيام',
+    ltEvery: 'كل:',
+    msgLtAdded: 'تمت إضافة العادة المتكررة ✓',
+    msgLtRemoved: 'تم حذف العادة المتكررة',
+    msgLtCompleted: '+{xp} XP — عمل رائع! 🏆',
+    msgEnterLtName: 'أدخل اسم العادة',
+    msgFocusComplete: '+100 XP — جلسة تركيز مكتملة! 🍅',
+    msgBreakOver: 'انتهت الاستراحة! جاهز للجلسة {n}؟',
+    // --- Pomodoro ---
+    pomoWorkSession: 'جلسة عمل', pomoBreakTime: 'وقت الاستراحة',
+    pomoSessionLabel: 'الجلسة {n} · {mode}',
+    pomoWorkMode: 'عمل', pomoBreakMode: 'استراحة',
+    pomoXpHint: 'أكمل جلسة عمل لكسب',
+    // --- Rewards ---
+    rewardWindow30: 'مطلوب أداء مستمر لمدة 30 يوماً',
+    rewardProgressLabel: '{pct}% / {threshold}% (متوسط 30 يوم)',
+    // --- XP ---
+    xpLevelBadge: 'مس{n}',
+    xpLevelTitle: 'المستوى {n} — {title}',
+    xpCountLabel: '{xp} / {next} XP',
+    levelUpText: '🚀 ارتقيت مستوى! المستوى {n}',
+    // --- Insights ---
+    insightsTitle: 'توصيات نيبولا',
+    insightAnalyzing: 'جارٍ تحليل عاداتك…',
   },
   fr: {
     pageTitle: 'Nebula — Traqueur d\'Habitudes',
@@ -1266,7 +1440,62 @@ var i18n = {
     notesSelectOrCreate: 'Sélectionnez une note ou créez-en une nouvelle.',
     notesTitlePlaceholder: 'Titre de la note…', notesBodyPlaceholder: 'Commencez à écrire…',
     notesReady: 'Prêt', notesSaving: 'Sauvegarde…', notesSaved: 'Sauvegardé',
+        pomoTitle: 'Minuteur Pomodoro',
     notesUntitled: 'Note sans titre',
+    // --- Interval Habits modal keys ---
+    ltModalTitle: 'Nouvelle Habitude Répétitive',
+    ltLabelName: 'Nom de l\'habitude', ltLabelEmoji: 'Emoji',
+    ltLabelRepeat: 'Répéter tous les', ltLabelUnit: 'Unité',
+    ltLabelXP: 'Récompense XP', ltLabelReminder: 'Heure de Rappel',
+    ltOptDays: 'Jours', ltOptWeeks: 'Semaines', ltOptMonths: 'Mois',
+    ltDaysLabel: 'Jours spécifiques (facultatif — laisser vide pour intervalle)',
+    ltDaysHint: '✦ Sélectionner des jours remplace le planning d\'intervalle.',
+    btnCancel: 'Annuler', btnSaveHabit: 'Enregistrer',
+    daySat: 'Sam', daySun: 'Dim', dayMon: 'Lun', dayTue: 'Mar', dayWed: 'Mer', dayThu: 'Jeu', dayFri: 'Ven',
+    // --- Notes extra ---
+    navIntervalHabits: 'Habitudes Répétitives',
+    titleIntervalHabits: 'Habitudes Répétitives & Long Terme',
+    notifEnableTitle: 'Activer les Rappels',
+    notifEnableDesc: 'recevoir des notifications pour les habitudes dues',
+    notifEnableBtn: 'Activer',
+    ltYourHabits: 'Vos Habitudes Répétitives',
+    ltAddBtn: 'Nouvelle Habitude Répétitive',
+    ltEmptyTitle: 'Pas encore d\'habitudes répétitives',
+    ltEmptyDesc: 'Créez des habitudes qui se répètent tous les jours, semaines ou mois.',
+    ltNotStarted: 'Pas commencé — tapez pour terminer !',
+    ltDueToday: 'Dû aujourd\'hui !',
+    ltDaysOverdue: 'jour(s) de retard',
+    ltDaysRemaining: 'jour(s) restant(s)',
+    ltMarkComplete: 'Marquer Terminé — Collecter XP !',
+    ltCompleteEarly: 'Terminer en Avance',
+    ltXpBurst: '+{xp} XP à la complétion',
+    ltIntervalEveryDay: 'Chaque jour',
+    ltIntervalEveryWeeks: 'Toutes les {n} semaine(s)',
+    ltIntervalEveryMonths: 'Tous les {n} mois',
+    ltIntervalEveryDays: 'Tous les {n} jours',
+    ltEvery: 'Chaque :',
+    msgLtAdded: 'Habitude répétitive ajoutée ✓',
+    msgLtRemoved: 'Habitude répétitive supprimée',
+    msgLtCompleted: '+{xp} XP — Excellent travail ! 🏆',
+    msgEnterLtName: 'Entrez un nom d\'habitude',
+    msgFocusComplete: '+100 XP — Session de concentration terminée ! 🍅',
+    msgBreakOver: 'Pause terminée ! Prêt pour la session {n} ?',
+    // --- Pomodoro ---
+    pomoWorkSession: 'Session de Travail', pomoBreakTime: 'Temps de Pause',
+    pomoSessionLabel: 'Session {n} · {mode}',
+    pomoWorkMode: 'Travail', pomoBreakMode: 'Pause',
+    pomoXpHint: 'Terminez une session pour gagner',
+    // --- Rewards ---
+    rewardWindow30: 'Performance soutenue de 30 jours requise',
+    rewardProgressLabel: '{pct}% / {threshold}% (moy. 30 jours)',
+    // --- XP ---
+    xpLevelBadge: 'Nv{n}',
+    xpLevelTitle: 'Niveau {n} — {title}',
+    xpCountLabel: '{xp} / {next} XP',
+    levelUpText: '🚀 Niveau Supérieur ! Niveau {n}',
+    // --- Insights ---
+    insightsTitle: 'Recommandations Nebula',
+    insightAnalyzing: 'Analyse de vos habitudes…',
   }
 };
 
@@ -1315,6 +1544,23 @@ function applyTranslations() {
   document.getElementById('confirmBody').textContent = t('confirmBody');
   document.getElementById('confirmOkBtn').textContent = t('confirmOk');
   document.getElementById('confirmCancelBtn').textContent = t('confirmCancel');
+  // Update day buttons in lt modal
+  var dayBtnsTranslate = document.querySelectorAll('#ltDaysRow .lt-day-btn[data-key-day]');
+  for (var dbi=0; dbi<dayBtnsTranslate.length; dbi++) {
+    var dkey = dayBtnsTranslate[dbi].getAttribute('data-key-day');
+    if(dkey && i18n[currentLang] && i18n[currentLang][dkey]) {
+      dayBtnsTranslate[dbi].textContent = i18n[currentLang][dkey];
+    }
+  }
+  // Update lt select options
+  var ltUnit = document.getElementById('ltIntervalUnit');
+  if(ltUnit) {
+    var unitOpts = ltUnit.querySelectorAll('option[data-key]');
+    for(var uoi=0; uoi<unitOpts.length; uoi++){
+      var ukey = unitOpts[uoi].getAttribute('data-key');
+      if(ukey && i18n[currentLang] && i18n[currentLang][ukey]) unitOpts[uoi].textContent = i18n[currentLang][ukey];
+    }
+  }
   updateGreeting();
   updateDateChip();
 }
@@ -1411,33 +1657,12 @@ function init(){
   initQuotes();
   renderXPBar();
   renderNebulaInsights();
-  // ── Service Worker: register + auto-reload on new Vercel deployment ─────
-  // skipWaiting() in sw.js activates the new worker instantly on each deploy.
-  // The controllerchange + updatefound listeners here reload the tab once so
-  // users always see the latest build without a manual hard refresh.
+  // Register Service Worker for PWA offline mode — called directly (DOM already ready)
   if ('serviceWorker' in navigator) {
-    var _swRefreshing = false;
-
     navigator.serviceWorker.register('./sw.js').then(function(reg) {
-      // updatefound fires whenever a new SW version starts installing
-      reg.addEventListener('updatefound', function() {
-        var newWorker = reg.installing;
-        if (!newWorker) return;
-        newWorker.addEventListener('statechange', function() {
-          // Once the new SW is fully activated and controlling the page, reload
-          if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-            if (!_swRefreshing) { _swRefreshing = true; window.location.reload(); }
-          }
-        });
-      });
+      console.log('[SW] Registered, scope:', reg.scope);
     }).catch(function(err) {
-      // Non-critical — app works fine without the SW
-      console.warn('[SW] Registration failed:', err);
-    });
-
-    // Safety net: catches skipWaiting() triggered from another tab
-    navigator.serviceWorker.addEventListener('controllerchange', function() {
-      if (!_swRefreshing) { _swRefreshing = true; window.location.reload(); }
+      console.warn('[SW] Registration failed (non-critical):', err);
     });
   }
   setInterval(function(){ updateGreeting(); updateDateChip(); }, 60000);
@@ -1737,9 +1962,28 @@ function renderRewards(){
 }
 
 function getCategoryCompletion(cat){
-  var habits = state.habits.filter(function(h){ return h.category===cat; }); if(!habits.length) return 0;
+  // SUSTAINED PROGRESS ALGORITHM: evaluate performance only over the last 30 days
+  // Rewards unlock only when the rolling 30-day average >= threshold, preventing Day 1 triggers.
+  var habits = state.habits.filter(function(h){ return h.category===cat; });
+  if(!habits.length) return 0;
+  // Build last-30-days window
+  var window30 = [];
+  var today = new Date();
+  for(var i=0; i<30; i++){
+    var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    window30.push(fmtDate(d));
+  }
+  // Only count days where we have at least one completion record in the app
+  // (avoids penalizing days before the app was installed)
+  var daysWithData = window30.filter(function(k){ return state.completions[k] !== undefined; });
+  if(daysWithData.length < 3) return 0; // need at least 3 days of data — never fires on Day 1
   var done=0, total=0;
-  Object.keys(state.completions).forEach(function(k){ habits.forEach(function(h){ total++; if(state.completions[k][h.id]) done++; }); });
+  daysWithData.forEach(function(k){
+    habits.forEach(function(h){
+      total++;
+      if(state.completions[k] && state.completions[k][h.id]) done++;
+    });
+  });
   return total ? (done/total)*100 : 0;
 }
 
@@ -2289,7 +2533,7 @@ function pomodoroStart() {
       if (!_pomo.isBreak) {
         // Work session complete — award XP
         addXP(XP_PER_POMODORO);
-        showToast('+100 XP — Focus session complete! 🍅', 'success');
+        showToast(t('msgFocusComplete'), 'success');
         _pomo.isBreak = true;
         _pomo.totalSecs = POMO_BREAK_SECS;
         _pomo.remainingSecs = POMO_BREAK_SECS;
@@ -2299,7 +2543,7 @@ function pomodoroStart() {
         _pomo.isBreak = false;
         _pomo.totalSecs = POMO_WORK_SECS;
         _pomo.remainingSecs = POMO_WORK_SECS;
-        showToast('Break over! Ready for session ' + _pomo.session + '?', 'info');
+        showToast(t('msgBreakOver', {n: _pomo.session}), 'info');
       }
       document.getElementById('pomoBtnStart').style.display = 'inline-flex';
       document.getElementById('pomoBtnPause').style.display = 'none';
@@ -2346,14 +2590,14 @@ function updatePomodoroUI() {
 
   if (_pomo.isBreak) {
     progressEl.style.stroke = 'var(--neon-blue)';
-    modeBadge.textContent = 'Break Time';
+    modeBadge.textContent = t('pomoBreakTime');
     modeBadge.className = 'pomodoro-mode-badge break';
-    sessionLbl.textContent = 'Session ' + _pomo.session + ' · Break';
+    sessionLbl.textContent = t('pomoSessionLabel', {n: _pomo.session, mode: t('pomoBreakMode')});
   } else {
     progressEl.style.stroke = 'var(--neon-green)';
-    modeBadge.textContent = 'Work Session';
+    modeBadge.textContent = t('pomoWorkSession');
     modeBadge.className = 'pomodoro-mode-badge work';
-    sessionLbl.textContent = 'Session ' + _pomo.session + ' · Work';
+    sessionLbl.textContent = t('pomoSessionLabel', {n: _pomo.session, mode: t('pomoWorkMode')});
   }
 }
 
@@ -2535,8 +2779,8 @@ function ltRenderGrid() {
     grid.innerHTML =
       '<div class="lt-empty">' +
         '<i class="fas fa-hourglass-start"></i>' +
-        '<div style="font-size:14px;color:var(--text-secondary);font-weight:600;margin-bottom:4px;">No interval habits yet</div>' +
-        '<div>Create habits that repeat every few days, weeks, or months — like cleaning filters, deep-cleaning, or monthly reviews.</div>' +
+        '<div style="font-size:14px;color:var(--text-secondary);font-weight:600;margin-bottom:4px;">' + t('ltEmptyTitle') + '</div>' +
+        '<div>' + t('ltEmptyDesc') + '</div>' +
       '</div>';
     return;
   }
@@ -2561,21 +2805,29 @@ function ltRenderGrid() {
     var countdownVal, countdownLabel;
     if (neverDone) {
       countdownVal = '!';
-      countdownLabel = 'Not started — tap to complete!';
+      countdownLabel = t('ltNotStarted');
     } else if (due) {
       var overdueDays = Math.abs(daysLeft);
       countdownVal = overdueDays;
-      countdownLabel = overdueDays === 0 ? 'Due today!' : 'day' + (overdueDays === 1 ? '' : 's') + ' overdue';
+      countdownLabel = overdueDays === 0 ? t('ltDueToday') : overdueDays + ' ' + t('ltDaysOverdue');
     } else {
       countdownVal = daysLeft;
-      countdownLabel = 'day' + (daysLeft === 1 ? '' : 's') + ' remaining';
+      countdownLabel = daysLeft + ' ' + t('ltDaysRemaining');
     }
 
     var intervalLabel = '';
-    if (habit.intervalDays === 1) intervalLabel = 'Every day';
-    else if (habit.intervalDays % 30 === 0) intervalLabel = 'Every ' + (habit.intervalDays / 30) + ' month' + (habit.intervalDays / 30 > 1 ? 's' : '');
-    else if (habit.intervalDays % 7 === 0) intervalLabel = 'Every ' + (habit.intervalDays / 7) + ' week' + (habit.intervalDays / 7 > 1 ? 's' : '');
-    else intervalLabel = 'Every ' + habit.intervalDays + ' days';
+    if (habit.intervalDays === 1) intervalLabel = t('ltIntervalEveryDay');
+    else if (habit.intervalDays % 30 === 0) intervalLabel = t('ltIntervalEveryMonths', {n: habit.intervalDays / 30});
+    else if (habit.intervalDays % 7 === 0) intervalLabel = t('ltIntervalEveryWeeks', {n: habit.intervalDays / 7});
+    else intervalLabel = t('ltIntervalEveryDays', {n: habit.intervalDays});
+
+    var daysHtml = '';
+    if (habit.specificDays && habit.specificDays.length > 0) {
+      daysHtml = '<div class="lt-card-days"><i class="fas fa-calendar-week"></i>' + t('ltEvery') + ' ' + escapeHtml(habit.specificDays.join(', ')) + '</div>';
+    }
+    if (habit.reminderTime) {
+      daysHtml += '<div class="lt-card-reminder"><i class="fas fa-bell"></i>' + escapeHtml(habit.reminderTime) + '</div>';
+    }
 
     card.innerHTML =
       '<div class="lt-card-header">' +
@@ -2584,6 +2836,7 @@ function ltRenderGrid() {
           '<div class="lt-card-info">' +
             '<div class="lt-card-name">' + escapeHtml(habit.name) + '</div>' +
             '<div class="lt-card-interval"><i class="fas fa-redo" style="font-size:9px;margin-inline-end:4px;opacity:0.6;"></i>' + intervalLabel + '</div>' +
+            daysHtml +
           '</div>' +
         '</div>' +
         '<button class="lt-card-del" onclick="ltDeleteHabit(\'' + habit.id + '\')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
@@ -2594,9 +2847,9 @@ function ltRenderGrid() {
       '</div>' +
       '<div class="lt-progress-wrap"><div class="lt-progress-fill" style="width:' + pct + '%;' + (due ? 'background:var(--neon-amber);' : '') + '"></div></div>' +
       '<button class="lt-complete-btn' + (due ? ' lt-due-btn' : '') + '" onclick="ltComplete(\'' + habit.id + '\')">' +
-        '<i class="fas fa-' + (due ? 'star' : 'check') + '"></i> ' + (due ? 'Mark Complete — Collect XP!' : 'Complete Early') +
+        '<i class="fas fa-' + (due ? 'star' : 'check') + '"></i> ' + (due ? t('ltMarkComplete') : t('ltCompleteEarly')) +
       '</button>' +
-      '<div class="lt-xp-burst">+' + habit.xpReward + ' XP on completion</div>';
+      '<div class="lt-xp-burst">' + t('ltXpBurst', {xp: habit.xpReward}) + '</div>';
 
     grid.appendChild(card);
   });
@@ -2608,8 +2861,29 @@ function ltOpenAddModal() {
   document.getElementById('ltIntervalDays').value = '7';
   document.getElementById('ltIntervalUnit').value = 'days';
   document.getElementById('ltXpReward').value = '500';
+  // Reset day buttons
+  var dayBtns = document.querySelectorAll('#ltDaysRow .lt-day-btn');
+  for (var i = 0; i < dayBtns.length; i++) {
+    dayBtns[i].classList.remove('selected', 'selected-green');
+  }
+  var ltTimeEl = document.getElementById('ltReminderTime');
+  if(ltTimeEl) ltTimeEl.value = '';
   document.getElementById('ltModalOverlay').classList.add('show');
   setTimeout(function(){ document.getElementById('ltName').focus(); }, 80);
+}
+
+function ltToggleDay(btn) {
+  btn.classList.toggle('selected');
+  // Count selected; if ≥3 use green accent for visual variety
+  var allBtns = document.querySelectorAll('#ltDaysRow .lt-day-btn');
+  var selCount = 0;
+  for (var i = 0; i < allBtns.length; i++) { if (allBtns[i].classList.contains('selected')) selCount++; }
+  for (var j = 0; j < allBtns.length; j++) {
+    if (allBtns[j].classList.contains('selected')) {
+      if (selCount >= 3) { allBtns[j].classList.add('selected-green'); allBtns[j].classList.remove('selected'); }
+      else { allBtns[j].classList.remove('selected-green'); allBtns[j].classList.add('selected'); }
+    }
+  }
 }
 
 function ltCloseAddModal() {
@@ -2618,7 +2892,7 @@ function ltCloseAddModal() {
 
 function ltSaveNewHabit() {
   var name = document.getElementById('ltName').value.trim();
-  if (!name) { showToast('Enter a habit name', 'info'); return; }
+  if (!name) { showToast(t('msgEnterLtName'), 'info'); return; }
   var emoji = document.getElementById('ltEmoji').value.trim() || '🔁';
   var num   = parseInt(document.getElementById('ltIntervalDays').value) || 7;
   var unit  = document.getElementById('ltIntervalUnit').value;
@@ -2626,18 +2900,29 @@ function ltSaveNewHabit() {
   var days  = num;
   if (unit === 'weeks')  days = num * 7;
   if (unit === 'months') days = num * 30;
+  // Capture selected specific days
+  var specificDays = [];
+  var dayBtns = document.querySelectorAll('#ltDaysRow .lt-day-btn');
+  for (var i = 0; i < dayBtns.length; i++) {
+    if (dayBtns[i].classList.contains('selected') || dayBtns[i].classList.contains('selected-green')) {
+      specificDays.push(dayBtns[i].getAttribute('data-day'));
+    }
+  }
+  var reminderTime = (document.getElementById('ltReminderTime').value || '').trim();
   ltLoad();
   _ltHabits.push({
     id: 'lt' + Date.now(),
     name: name, emoji: emoji,
     intervalDays: days, xpReward: xpRew,
-    lastCompleted: null
+    lastCompleted: null,
+    specificDays: specificDays,
+    reminderTime: reminderTime || null
   });
   ltSave();
   ltCloseAddModal();
   ltRenderGrid();
   nebulaBadgeUpdate();
-  showToast('Interval habit added ✓', 'success');
+  showToast(t('msgLtAdded'), 'success');
 }
 
 function ltComplete(habitId) {
@@ -2668,7 +2953,7 @@ function ltComplete(habitId) {
   var overlay = document.getElementById('levelUpOverlay');
   var text    = document.getElementById('levelUpText');
   if (overlay && text) {
-    text.textContent = '⭐ +' + habit.xpReward + ' XP — ' + habit.name + ' Complete!';
+    text.textContent = '⭐ +' + habit.xpReward + ' XP — ' + habit.name + '!';
     overlay.classList.remove('show');
     void overlay.offsetWidth;
     overlay.classList.add('show');
@@ -2677,7 +2962,7 @@ function ltComplete(habitId) {
 
   ltRenderGrid();
   nebulaBadgeUpdate();
-  showToast('+' + habit.xpReward + ' XP — Great work! 🏆', 'success');
+  showToast(t('msgLtCompleted', {xp: habit.xpReward}), 'success');
 }
 
 function ltDeleteHabit(habitId) {
@@ -2686,7 +2971,7 @@ function ltDeleteHabit(habitId) {
   ltSave();
   ltRenderGrid();
   nebulaBadgeUpdate();
-  showToast('Interval habit removed', 'info');
+  showToast(t('msgLtRemoved'), 'info');
 }
 
 function ltCountDueHabits() {
@@ -2915,6 +3200,318 @@ renderAll = function() {
   _origRenderAllBadge();
   nebulaBadgeUpdate();
 };
+</script>
+
+<!-- ============================================================
+     NEBULA — LICENSE KEY ACTIVATION SYSTEM
+     Placed just before </body> so all DOM is ready.
+     Does NOT touch or interfere with the Domain Lock in <head>.
+============================================================ -->
+
+<!-- Activation overlay (hidden once activated) -->
+<div id="nebula-license-overlay" style="display:none;">
+  <div id="nebula-license-box">
+    <div id="nebula-license-logo">&#9733;</div>
+    <div id="nebula-license-title">Activate Nebula</div>
+    <div id="nebula-license-sub">Enter your license key to unlock the application.<br>An internet connection is required for verification.</div>
+    <label id="nebula-license-label" for="nebula-license-input">License Key</label>
+    <input id="nebula-license-input" type="text" placeholder="Enter License Key"
+           spellcheck="false" autocomplete="off" autocorrect="off"
+           autocapitalize="characters" maxlength="60">
+    <button id="nebula-license-btn">Activate</button>
+    <div id="nebula-license-status"></div>
+    <div id="nebula-license-footer">Need a key? Contact your administrator.</div>
+  </div>
+</div>
+
+<style>
+/* ── Overlay backdrop ─────────────────────────────────────── */
+#nebula-license-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: #0b0f17;
+  display: flex !important;   /* overridden to none by JS when activated */
+  align-items: center;
+  justify-content: center;
+  font-family: "Inter","Tajawal","Cairo",system-ui,sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+/* ── Card ─────────────────────────────────────────────────── */
+#nebula-license-box {
+  background: #111827;
+  border: 1px solid rgba(168,85,247,0.28);
+  border-radius: 22px;
+  padding: 46px 42px 42px;
+  width: 460px;
+  max-width: calc(100vw - 32px);
+  box-shadow: 0 0 80px rgba(168,85,247,0.14), 0 28px 72px rgba(0,0,0,0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: _nlic_fadein_ 0.42s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes _nlic_fadein_ {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* ── Logo badge ───────────────────────────────────────────── */
+#nebula-license-logo {
+  width: 58px; height: 58px;
+  border-radius: 17px;
+  background: linear-gradient(135deg,#a855f7,#f472b6);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 32px rgba(168,85,247,0.5);
+  margin-bottom: 24px;
+  font-size: 26px;
+}
+/* ── Title / sub ──────────────────────────────────────────── */
+#nebula-license-title {
+  font-size: 23px; font-weight: 800; color: #f0f4f8;
+  letter-spacing: -0.4px; margin-bottom: 7px; text-align: center;
+}
+#nebula-license-sub {
+  font-size: 13px; color: #64748b;
+  margin-bottom: 32px; text-align: center; line-height: 1.65;
+}
+/* ── Label ────────────────────────────────────────────────── */
+#nebula-license-label {
+  width: 100%;
+  font-size: 11.5px; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.7px;
+  margin-bottom: 9px;
+}
+/* ── Input ────────────────────────────────────────────────── */
+#nebula-license-input {
+  width: 320px; max-width: 100%;
+  background: #1a2233;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 11px;
+  padding: 14px 16px;
+  color: #f0f4f8; font-size: 14px;
+  font-family: inherit; font-weight: 500; letter-spacing: 0.6px;
+  outline: none;
+  transition: border-color .25s, box-shadow .25s;
+  text-align: center;
+}
+#nebula-license-input:focus {
+  border-color: rgba(168,85,247,.75);
+  box-shadow: 0 0 0 3px rgba(168,85,247,.15);
+}
+#nebula-license-input::placeholder { color: #2d3a50; }
+#nebula-license-input:disabled { opacity: .5; cursor: not-allowed; }
+/* ── Button ───────────────────────────────────────────────── */
+#nebula-license-btn {
+  margin-top: 14px;
+  width: 320px; max-width: 100%;
+  padding: 14px 24px;
+  border: none; border-radius: 11px; cursor: pointer;
+  background: linear-gradient(135deg,#a855f7,#f472b6);
+  color: #fff; font-size: 14px; font-weight: 700;
+  font-family: inherit; letter-spacing: .3px;
+  box-shadow: 0 4px 26px rgba(168,85,247,.42);
+  transition: transform .2s, box-shadow .2s, opacity .2s;
+}
+#nebula-license-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 36px rgba(168,85,247,.58);
+}
+#nebula-license-btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+/* ── Status message ───────────────────────────────────────── */
+#nebula-license-status {
+  margin-top: 13px;
+  min-height: 38px; width: 320px; max-width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; border-radius: 9px; padding: 9px 14px;
+  font-size: 12.5px; font-weight: 600;
+  opacity: 0; transition: opacity .2s;
+}
+#nebula-license-status.show { opacity: 1; }
+#nebula-license-status.err  { background:rgba(239,68,68,.09); border:1px solid rgba(239,68,68,.22); color:#ef4444; }
+#nebula-license-status.warn { background:rgba(251,191,36,.09); border:1px solid rgba(251,191,36,.22); color:#fbbf24; }
+#nebula-license-status.ok   { background:rgba(52,211,153,.09); border:1px solid rgba(52,211,153,.22); color:#34d399; }
+#nebula-license-status.info { background:rgba(56,189,248,.09); border:1px solid rgba(56,189,248,.22); color:#38bdf8; }
+/* ── Spinner ──────────────────────────────────────────────── */
+@keyframes _nlic_spin_ { to { transform: rotate(360deg); } }
+._nlic_spinner_ {
+  width: 15px; height: 15px; flex-shrink: 0;
+  border: 2px solid rgba(56,189,248,.25);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: _nlic_spin_ .7s linear infinite;
+}
+/* ── Footer note ──────────────────────────────────────────── */
+#nebula-license-footer {
+  margin-top: 26px;
+  font-size: 11px; color: #2d3a50; text-align: center; line-height: 1.6;
+}
+</style>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── Configuration ──────────────────────────────────────── */
+  var LS_KEY       = 'nebula_activated';
+  var HASH_URL     = 'https://raw.githubusercontent.com/fairytaledesign41-ism/nepulahabits/refs/heads/main/nebula-license-hashes.txt';
+  var CACHE_TTL_MS = 24 * 60 * 60 * 1000; // re-verify every 24 h
+  var LS_CACHE_KEY = 'nebula_lic_cache';   // stores { hash, ts }
+
+  /* ── localStorage helpers ───────────────────────────────── */
+  function lsGet(k)    { try { return localStorage.getItem(k); }    catch(e){ return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); }        catch(e){ } }
+  function lsDel(k)    { try { localStorage.removeItem(k); }        catch(e){ } }
+
+  /* ── SHA-256 via Web Crypto ─────────────────────────────── */
+  function sha256(str) {
+    var encoded = new TextEncoder().encode(str);
+    return crypto.subtle.digest('SHA-256', encoded).then(function (buf) {
+      return Array.from(new Uint8Array(buf))
+        .map(function (b) { return ('00' + b.toString(16)).slice(-2); })
+        .join('');
+    });
+  }
+
+  /* ── Fetch remote hash list → Set of lowercase hex strings ─ */
+  function fetchHashes() {
+    return fetch(HASH_URL, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (txt) {
+        var set = new Set();
+        txt.split(/\r?\n/).forEach(function (line) {
+          var h = line.trim().toLowerCase();
+          if (h.length === 64) set.add(h);
+        });
+        return set;
+      });
+  }
+
+  /* ── UI helpers ─────────────────────────────────────────── */
+  function setStatus(type, html) {
+    var el = document.getElementById('nebula-license-status');
+    if (!el) return;
+    el.className = 'show ' + type;
+    el.innerHTML = html;
+  }
+  function clearStatus() {
+    var el = document.getElementById('nebula-license-status');
+    if (el) { el.className = ''; el.innerHTML = ''; }
+  }
+  function setLocked(on) {
+    var inp = document.getElementById('nebula-license-input');
+    var btn = document.getElementById('nebula-license-btn');
+    if (inp) inp.disabled = on;
+    if (btn) btn.disabled = on;
+  }
+  function resetInputStyle() {
+    var inp = document.getElementById('nebula-license-input');
+    if (inp) { inp.style.borderColor = ''; inp.style.boxShadow = ''; }
+  }
+
+  /* ── Check if already activated ────────────────────────── */
+  function isActivated() {
+    /* Legacy flat flag */
+    if (lsGet(LS_KEY) === 'true') return true;
+    /* Cache record with TTL */
+    var raw = lsGet(LS_CACHE_KEY);
+    if (!raw) return false;
+    try {
+      var p = JSON.parse(raw);
+      return !!(p && p.hash && p.ts && (Date.now() - p.ts) < CACHE_TTL_MS);
+    } catch (e) { return false; }
+  }
+
+  /* ── Show / hide overlay ────────────────────────────────── */
+  var overlay = document.getElementById('nebula-license-overlay');
+
+  if (isActivated()) {
+    /* Already activated — hide overlay, let app run */
+    if (overlay) overlay.style.display = 'none';
+    return;
+  }
+
+  /* Not yet activated — show overlay */
+  if (overlay) overlay.style.display = 'flex';
+  var inp = document.getElementById('nebula-license-input');
+  if (inp) setTimeout(function () { inp.focus(); }, 150);
+
+  /* ── Core activation function ───────────────────────────── */
+  function activate() {
+    var input = document.getElementById('nebula-license-input');
+    if (!input) return;
+
+    var raw = input.value.trim().toUpperCase();
+    if (!raw) {
+      setStatus('warn', '<span>&#9888;</span> Please enter your license key.');
+      input.focus();
+      return;
+    }
+
+    setLocked(true);
+    setStatus('info',
+      '<div class="_nlic_spinner_"></div><span>Verifying license&hellip;</span>');
+
+    sha256(raw)
+      .then(function (hash) {
+        return fetchHashes().then(function (hashSet) {
+          return { hash: hash, valid: hashSet.has(hash) };
+        });
+      })
+      .then(function (result) {
+        if (result.valid) {
+          /* ✔ Valid — persist both flags and reload */
+          lsSet(LS_KEY, 'true');
+          lsSet(LS_CACHE_KEY, JSON.stringify({ hash: result.hash, ts: Date.now() }));
+          setStatus('ok', '<span>&#10004;</span> License verified! Loading&hellip;');
+          setTimeout(function () { location.reload(); }, 900);
+        } else {
+          /* ✘ Invalid */
+          setLocked(false);
+          setStatus('err',
+            '<svg width="14" height="14" viewBox="0 0 14 14" fill="none">' +
+            '<circle cx="7" cy="7" r="6.25" stroke="#ef4444" stroke-width="1.5"/>' +
+            '<line x1="7" y1="4" x2="7" y2="7.5" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round"/>' +
+            '<circle cx="7" cy="9.5" r="0.75" fill="#ef4444"/></svg>' +
+            ' Invalid license key! Please try again.');
+          /* Per spec, also show alert */
+          alert('Invalid license key!');
+          var i = document.getElementById('nebula-license-input');
+          if (i) {
+            i.style.borderColor = 'rgba(239,68,68,.6)';
+            i.style.boxShadow   = '0 0 0 3px rgba(239,68,68,.12)';
+            i.select();
+          }
+        }
+      })
+      .catch(function (err) {
+        setLocked(false);
+        setStatus('warn',
+          '<svg width="14" height="14" viewBox="0 0 14 14" fill="none">' +
+          '<circle cx="7" cy="7" r="6.25" stroke="#fbbf24" stroke-width="1.5"/>' +
+          '<line x1="7" y1="4" x2="7" y2="7.5" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round"/>' +
+          '<circle cx="7" cy="9.5" r="0.75" fill="#fbbf24"/></svg>' +
+          ' Could not reach the license server. Check your connection and retry.');
+        console.warn('[Nebula License] Fetch error:', err);
+      });
+  }
+
+  /* ── Event listeners ────────────────────────────────────── */
+  var btn = document.getElementById('nebula-license-btn');
+  var inputEl = document.getElementById('nebula-license-input');
+
+  if (btn) btn.addEventListener('click', activate);
+  if (inputEl) {
+    inputEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { activate(); return; }
+      clearStatus();
+      resetInputStyle();
+    });
+  }
+
+})();
 </script>
 </body>
 </html>
