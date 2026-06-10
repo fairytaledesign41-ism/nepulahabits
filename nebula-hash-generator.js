@@ -32,9 +32,7 @@ const crypto = require('crypto');
 
 /* ── ADD YOUR LICENSE KEYS HERE ──────────────────────────────── */
 const KEYS = [
-  'NEBULA-2024-ALPHA-0001',
-  'NEBULA-2024-ALPHA-0002',
-  'NEBULA-X7K9-L2P4-M8R1',
+'NEBULA-X7K9-L2P4-M8R1',
   'NEBULA-B3V5-N9Q2-K6W7',
   'NEBULA-J4M8-D1F3-Z9T5',
   'NEBULA-C2H6-G7Y9-W4P1',
@@ -53,6 +51,7 @@ const KEYS = [
   'NEBULA-K9D5-F2N8-G4Y3',
   'NEBULA-L1T6-P3J9-X7M2',
   'NEBULA-R5W4-V8K7-D2B1',
+  'NEBULA-Z7C3-Q9H5-F6P8'
   // 'NEBULA-2024-BETA-0001',   ← add more as needed
 ];
 /* ─────────────────────────────────────────────────────────────── */
