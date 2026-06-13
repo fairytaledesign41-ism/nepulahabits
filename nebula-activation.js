@@ -45,10 +45,10 @@
     /**
      * Activation endpoint paths.
      */
-    ENDPOINTS: {
-      ACTIVATE: '/v1/license/activate',
-      REVALIDATE: '/v1/license/revalidate',
-      REVOKE: '/v1/license/revoke-device'
+ENDPOINTS: {
+      ACTIVATE: '/api/verify',   // هذا هو المسار الفعلي لملفك
+      REVALIDATE: '/api/verify', // يمكنك توجيهها لنفس الملف أو إنشاء ملف خاص
+      REVOKE: '/api/verify'      // يمكنك توجيهها لنفس الملف أو إنشاء ملف خاص
     },
 
     /**
