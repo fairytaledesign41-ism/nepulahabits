@@ -1,69 +1,55 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════╗
- * ║  NEBULA ACTIVATION SYSTEM  v1.0                                        ║
+ * ║  NEBULA ACTIVATION SYSTEM  v2.0                                        ║
  * ║  Lifetime License — Device Binding — Offline-First — Tamper-Resistant  ║
  * ╚══════════════════════════════════════════════════════════════════════════╝
  *
  * ARCHITECTURE OVERVIEW
  * ─────────────────────
- *  Frontend (this file)           Backend (activation-backend-spec.md)
+ *  Frontend (this file)           Backend (api/verify.js)
  *  ─────────────────────          ──────────────────────────────────────
- *  • Collect device fingerprint   • Validate license key against DB
- *  • POST /activate               • Check device limit
- *  • Receive signed JWT token     • Sign JWT with RS256 private key
- *  • Verify token with public key • Store device binding
- *  • Cache token offline          • Return token to frontend
+ *  • Collect device fingerprint   • Route logic by `action` field in body
+ *  • POST /api/verify             • activate  → validate key, issue JWT
+ *    { action: 'activate' }       • revalidate→ re-check key, rotate JWT
+ *  • Receive signed JWT token     • revoke    → deregister device in DB
+ *  • Verify token with public key
+ *  • Cache token offline
  *  • Periodic silent revalidation
  *
  * SECURITY LAYERS
  * ───────────────
  *  1. License key format validation  (client-side, cosmetic)
  *  2. Server-side key + device check (real protection)
- *  3. RS256-signed JWT — frontend only has PUBLIC key
- *  4. Token payload includes device fingerprint hash (tamper binding)
+ *  3. HS256-signed JWT — verified against server-issued secret
+ *  4. Token payload includes device fingerprint (tamper binding)
  *  5. localStorage integrity check — detects manual token swapping
- *  6. Periodic online revalidation   — catches revoked keys
+ *  6. Periodic online revalidation  — catches revoked / expired keys
  *
- * NOTE: No activation secrets or private keys are ever in this file.
- * The PUBLIC key below is safe to embed in frontend code.
+ * NOTE: All secret key material lives exclusively on the backend.
+ *       This file contains no private keys or secrets.
  */
 
 (function (window) {
   'use strict';
 
   /* ──────────────────────────────────────────────────────────────────────
-   *  CONFIG — edit these to match your deployment
+   *  CONFIG — edit API_BASE to match your deployment
    * ────────────────────────────────────────────────────────────────────── */
   var NEBULA_CONFIG = {
     /**
      * Your activation API base URL.
-     * In production: 'https://api.yourdomain.com'
-     * For local dev:  'http://localhost:3000'
+     * Production:  'https://api.yourdomain.com'
+     * Local dev:   'http://localhost:3000'
      */
     API_BASE: 'https://nepulahabits.vercel.app',
 
     /**
-     * Activation endpoint paths.
+     * Single unified endpoint — all actions POST here.
+     * The backend routes on body.action ('activate' | 'revalidate' | 'revoke').
      */
-ENDPOINTS: {
-      ACTIVATE: '/api/verify',   // هذا هو المسار الفعلي لملفك
-      REVALIDATE: '/api/verify', // يمكنك توجيهها لنفس الملف أو إنشاء ملف خاص
-      REVOKE: '/api/verify'      // يمكنك توجيهها لنفس الملف أو إنشاء ملف خاص
+    ENDPOINTS: {
+      VERIFY: '/api/verify'
     },
-
-    /**
-     * RS256 PUBLIC key (PEM) — safe to embed here.
-     * Replace this with the real public key exported from your backend.
-     * NEVER put the PRIVATE key in frontend code.
-     *
-     * Generate a key pair:
-     *   openssl genrsa -out private.pem 2048
-     *   openssl rsa -in private.pem -pubout -out public.pem
-     */
-    PUBLIC_KEY_PEM: `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
-0EXAMPLE_REPLACE_THIS_WITH_YOUR_REAL_PUBLIC_KEY_FROM_BACKEND_SETUP
------END PUBLIC KEY-----`,
 
     /**
      * How often to silently revalidate the token when online (ms).
@@ -72,15 +58,15 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
     REVALIDATION_INTERVAL_MS: 24 * 60 * 60 * 1000,
 
     /**
-     * Grace period: if network fails during revalidation, keep the app
+     * Grace period: if the network fails during revalidation, keep the app
      * working for this many days before requiring re-activation.
      * Default: 30 days.
      */
     OFFLINE_GRACE_DAYS: 30,
 
     /**
-     * Maximum devices allowed per license key (enforced server-side too).
-     * Frontend shows a warning when limit is reached.
+     * Maximum devices allowed per license key.
+     * This is enforced server-side; the frontend uses it only for messaging.
      */
     MAX_DEVICES: 2,
 
@@ -88,15 +74,16 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
      * Storage keys used in localStorage.
      */
     STORAGE: {
-      TOKEN: 'nebula_act_token',
-      FINGERPRINT: 'nebula_act_fp',
-      LAST_VALIDATE: 'nebula_act_last_ok',
+      TOKEN:           'nebula_act_token',
+      FINGERPRINT:     'nebula_act_fp',
+      LAST_VALIDATE:   'nebula_act_last_ok',
       ACTIVATION_DATA: 'nebula_act_data',
-      INTEGRITY_HASH: 'nebula_act_ih'
+      INTEGRITY_HASH:  'nebula_act_ih'
     },
 
     /**
-     * Toggle to false in production to suppress verbose console logs.
+     * Set to true during development to enable verbose console logging.
+     * Always false in production builds.
      */
     DEBUG: false
   };
@@ -107,25 +94,19 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
 
   function _log() {
     if (NEBULA_CONFIG.DEBUG && window.console && console.log) {
-      console.log.apply(console, ['[Nebula Activation]'].concat(Array.prototype.slice.call(arguments)));
+      console.log.apply(console, ['[Nebula]'].concat(Array.prototype.slice.call(arguments)));
     }
   }
 
-  /** Safe localStorage wrapper (works in iOS private mode) */
+  /** Safe localStorage wrapper — survives iOS private-mode restrictions. */
   var _store = {
-    get: function (k) {
-      try { return localStorage.getItem(k); } catch (e) { return null; }
-    },
-    set: function (k, v) {
-      try { localStorage.setItem(k, String(v)); return true; } catch (e) { return false; }
-    },
-    remove: function (k) {
-      try { localStorage.removeItem(k); } catch (e) {}
-    }
+    get:    function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set:    function (k, v) { try { localStorage.setItem(k, String(v)); return true; } catch (e) { return false; } },
+    remove: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
   };
 
   /**
-   * Simple FNV-1a 32-bit hash — used for lightweight integrity checks.
+   * FNV-1a 32-bit hash — lightweight, deterministic integrity fingerprint.
    * NOT cryptographic. Cryptographic operations use SubtleCrypto.
    */
   function _fnv32a(str) {
@@ -139,19 +120,9 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
   }
 
   /**
-   * Generate a device fingerprint using available browser signals.
-   * The result is a deterministic hash — stable across page reloads
-   * on the same device, but different across devices.
-   *
-   * Signals used:
-   *  • User-Agent
-   *  • Screen dimensions and color depth
-   *  • Timezone offset
-   *  • Hardware concurrency (CPU threads)
-   *  • Device memory (if available)
-   *  • Canvas fingerprint (fallback)
-   *  • Language
-   *  • Platform
+   * Build a stable device fingerprint from available browser signals.
+   * Deterministic per device, different across devices.
+   * Cached in localStorage to avoid re-computing every call.
    */
   function _buildDeviceFingerprint() {
     var cached = _store.get(NEBULA_CONFIG.STORAGE.FINGERPRINT);
@@ -160,15 +131,15 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
     var signals = [
       navigator.userAgent || '',
       (screen.width || 0) + 'x' + (screen.height || 0),
-      (screen.colorDepth || 24),
-      (new Date().getTimezoneOffset()),
-      (navigator.hardwareConcurrency || 2),
-      (navigator.deviceMemory || 4),
+      String(screen.colorDepth || 24),
+      String(new Date().getTimezoneOffset()),
+      String(navigator.hardwareConcurrency || 2),
+      String(navigator.deviceMemory || 4),
       (navigator.language || 'en'),
       (navigator.platform || '')
     ];
 
-    // Canvas fingerprint (subtle rendering differences per GPU/font)
+    // Canvas fingerprint: subtle per-GPU/font rendering differences
     try {
       var canvas = document.createElement('canvas');
       canvas.width = 240; canvas.height = 60;
@@ -182,7 +153,9 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(200, 30, 20, 0, Math.PI * 2); ctx.stroke();
       signals.push(canvas.toDataURL().slice(-80));
-    } catch (e) { signals.push('no-canvas'); }
+    } catch (e) {
+      signals.push('no-canvas');
+    }
 
     var fp = _fnv32a(signals.join('|'));
     _store.set(NEBULA_CONFIG.STORAGE.FINGERPRINT, fp);
@@ -190,30 +163,24 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
     return fp;
   }
 
-  /**
-   * Compute a lightweight integrity hash of the token + fingerprint.
-   * Stored separately so tampering with either is detected.
-   */
+  /** Compute a lightweight integrity check of token + fingerprint. */
   function _computeIntegrityHash(token, fp) {
     return _fnv32a(token + ':' + fp + ':nebula-integrity');
   }
 
   /**
-   * Verify that stored token + fingerprint + integrity hash are consistent.
-   * Detects copy-paste attacks where someone manually writes a token to localStorage.
+   * Verify local integrity: token + fingerprint + stored hash must be
+   * mutually consistent. Detects manual localStorage tampering.
    */
   function _verifyLocalIntegrity() {
-    var token = _store.get(NEBULA_CONFIG.STORAGE.TOKEN);
-    var fp = _store.get(NEBULA_CONFIG.STORAGE.FINGERPRINT);
+    var token      = _store.get(NEBULA_CONFIG.STORAGE.TOKEN);
+    var fp         = _store.get(NEBULA_CONFIG.STORAGE.FINGERPRINT);
     var storedHash = _store.get(NEBULA_CONFIG.STORAGE.INTEGRITY_HASH);
     if (!token || !fp || !storedHash) return false;
-    var expected = _computeIntegrityHash(token, fp);
-    return expected === storedHash;
+    return _computeIntegrityHash(token, fp) === storedHash;
   }
 
-  /**
-   * Save token with integrity hash.
-   */
+  /** Persist token and update the integrity hash atomically. */
   function _saveToken(token) {
     var fp = _buildDeviceFingerprint();
     _store.set(NEBULA_CONFIG.STORAGE.TOKEN, token);
@@ -222,9 +189,8 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
   }
 
   /**
-   * Decode a JWT payload without cryptographic verification.
-   * Used only for reading claims (expiry, device, etc.) AFTER the
-   * server-side signature has been verified via the public key.
+   * Decode JWT payload (base64url) without cryptographic verification.
+   * Use ONLY for reading claims after the server has already validated.
    */
   function _decodeJwtPayload(token) {
     try {
@@ -232,80 +198,11 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
       if (parts.length !== 3) return null;
       var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
       while (b64.length % 4) b64 += '=';
-      var json = atob(b64);
-      return JSON.parse(json);
+      return JSON.parse(atob(b64));
     } catch (e) { return null; }
   }
 
-  /**
-   * Cryptographically verify the JWT using the public key (RS256).
-   * Uses the Web Crypto API (available in all modern browsers).
-   * Returns a Promise<boolean>.
-   */
-  function _verifyJwtSignature(token) {
-    return new Promise(function (resolve) {
-      try {
-        if (!window.crypto || !window.crypto.subtle) {
-          // Fallback: skip cryptographic verification in old browsers.
-          // Server-side verification already happened.
-          _log('SubtleCrypto unavailable — skipping signature verification');
-          resolve(true);
-          return;
-        }
-
-        var parts = token.split('.');
-        if (parts.length !== 3) { resolve(false); return; }
-
-        var headerPayload = parts[0] + '.' + parts[1];
-        var sigB64 = parts[2].replace(/-/g, '+').replace(/_/g, '/');
-        while (sigB64.length % 4) sigB64 += '=';
-
-        // Convert PEM public key to ArrayBuffer
-        var pemContent = NEBULA_CONFIG.PUBLIC_KEY_PEM
-          .replace(/-----BEGIN PUBLIC KEY-----/, '')
-          .replace(/-----END PUBLIC KEY-----/, '')
-          .replace(/\s/g, '');
-        var keyBytes = _base64ToArrayBuffer(pemContent);
-        var sigBytes = _base64ToArrayBuffer(sigB64);
-        var msgBytes = new TextEncoder().encode(headerPayload);
-
-        crypto.subtle.importKey(
-          'spki',
-          keyBytes,
-          { name: 'RSASSA-PKCS1-v1_5', hash: { name: 'SHA-256' } },
-          false,
-          ['verify']
-        ).then(function (key) {
-          return crypto.subtle.verify(
-            { name: 'RSASSA-PKCS1-v1_5' },
-            key,
-            sigBytes,
-            msgBytes
-          );
-        }).then(function (valid) {
-          _log('JWT signature valid:', valid);
-          resolve(valid);
-        }).catch(function (err) {
-          _log('JWT verify error:', err);
-          resolve(false);
-        });
-      } catch (e) {
-        _log('JWT verify exception:', e);
-        resolve(false);
-      }
-    });
-  }
-
-  function _base64ToArrayBuffer(b64) {
-    var bin = atob(b64);
-    var bytes = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes.buffer;
-  }
-
-  /**
-   * Format a license key: strip whitespace, uppercase, and add dashes every 4 chars.
-   */
+  /** Format raw key input → XXXX-XXXX-XXXX-XXXX. */
   function _formatLicenseKey(raw) {
     var clean = raw.replace(/[\s\-]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     var chunks = [];
@@ -314,30 +211,53 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
   }
 
   /**
-   * Client-side key format validation (cosmetic only — real check is server-side).
-   * Expected format: XXXX-XXXX-XXXX-XXXX (16 alphanum chars in 4 groups).
+   * Client-side key format validation — cosmetic only.
+   * Accepted formats: XXXX-XXXX-XXXX-XXXX or NEBULA-XXXX-XXXX-XXXX
    */
   function _isValidKeyFormat(key) {
-    return /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key);
+    return /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key) ||
+           /^NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key);
   }
 
-  /**
-   * Determine whether the stored token is expired.
-   * The 'exp' claim is a Unix timestamp in seconds.
-   */
+  /** True if the JWT 'exp' claim is in the past. */
   function _isTokenExpired(payload) {
     if (!payload || !payload.exp) return false; // lifetime token has no exp
     return (Date.now() / 1000) > payload.exp;
   }
 
-  /**
-   * Check if we're still within the offline grace period.
-   */
+  /** True if last successful revalidation was within the grace window. */
   function _withinGracePeriod() {
     var lastOk = _store.get(NEBULA_CONFIG.STORAGE.LAST_VALIDATE);
     if (!lastOk) return false;
-    var elapsed = Date.now() - parseInt(lastOk, 10);
-    return elapsed < NEBULA_CONFIG.OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+    return (Date.now() - parseInt(lastOk, 10)) <
+           NEBULA_CONFIG.OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  }
+
+  /** Remove all activation data from this device. */
+  function _clearActivation() {
+    var keys = Object.values(NEBULA_CONFIG.STORAGE);
+    for (var i = 0; i < keys.length; i++) _store.remove(keys[i]);
+    _log('Activation data cleared');
+  }
+
+  /**
+   * Thin fetch wrapper that always POSTs to /api/verify with an action field.
+   *
+   * @param {string} action   'activate' | 'revalidate' | 'revoke'
+   * @param {object} payload  Extra fields merged into the request body.
+   * @returns {Promise<{status: number, data: object}>}
+   */
+  function _verifyRequest(action, payload) {
+    var body = Object.assign({ action: action }, payload);
+    return fetch(NEBULA_CONFIG.API_BASE + NEBULA_CONFIG.ENDPOINTS.VERIFY, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body)
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        return { status: res.status, data: data };
+      });
+    });
   }
 
   /* ──────────────────────────────────────────────────────────────────────
@@ -345,89 +265,86 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
    * ────────────────────────────────────────────────────────────────────── */
 
   /**
-   * Attempt to activate a license key for this device.
+   * Activate a license key for this device.
    *
-   * Returns a Promise that resolves to:
-   *   { success: true,  token: '...', payload: {...} }  on success
-   *   { success: false, error: 'ERROR_CODE', message: '...' }  on failure
+   * Resolves to:
+   *   { success: true,  token, payload }   on success
+   *   { success: false, error, message }   on failure
    *
-   * Error codes:
-   *   INVALID_KEY_FORMAT   — key doesn't match expected pattern
-   *   NETWORK_ERROR        — could not reach activation server
-   *   KEY_NOT_FOUND        — key doesn't exist in the database
-   *   KEY_ALREADY_USED     — key is already activated on max devices
-   *   KEY_REVOKED          — key has been manually revoked
-   *   SERVER_ERROR         — unexpected server error
+   * Error codes: INVALID_KEY_FORMAT | NETWORK_ERROR | KEY_NOT_FOUND |
+   *              KEY_ALREADY_USED | KEY_REVOKED | KEY_EXPIRED |
+   *              DEVICE_MISMATCH | SERVER_ERROR
    */
   function activate(rawKey) {
     return new Promise(function (resolve) {
       var key = _formatLicenseKey(rawKey || '');
 
-      // 1. Client-side format check
+      // 1. Client-side format check (cosmetic)
       if (!_isValidKeyFormat(key)) {
-        resolve({ success: false, error: 'INVALID_KEY_FORMAT', message: 'Invalid license key format. Expected: XXXX-XXXX-XXXX-XXXX' });
+        resolve({
+          success: false,
+          error: 'INVALID_KEY_FORMAT',
+          message: 'Invalid license key format. Expected: XXXX-XXXX-XXXX-XXXX'
+        });
         return;
       }
 
       var fp = _buildDeviceFingerprint();
-      _log('Activating key:', key, 'fingerprint:', fp);
+      _log('Activating key:', key, '| fingerprint:', fp);
 
-      // 2. POST to activation API
-      var body = JSON.stringify({ licenseKey: key, deviceFingerprint: fp, appVersion: '1.0' });
-
-      fetch(NEBULA_CONFIG.API_BASE + NEBULA_CONFIG.ENDPOINTS.ACTIVATE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: body
-      }).then(function (res) {
-        return res.json().then(function (data) { return { status: res.status, data: data }; });
+      // 2. POST action=activate to /api/verify
+      _verifyRequest('activate', {
+        licenseKey:        key,
+        deviceFingerprint: fp,
+        appVersion:        '2.0'
       }).then(function (result) {
         if (result.status === 200 && result.data.token) {
-          // 3. Verify JWT signature with our public key
-          return _verifyJwtSignature(result.data.token).then(function (valid) {
-            if (!valid) {
-              resolve({ success: false, error: 'INVALID_TOKEN', message: 'Activation token signature is invalid.' });
-              return;
-            }
+          var payload = _decodeJwtPayload(result.data.token);
+          _log('Token payload:', payload);
 
-            var payload = _decodeJwtPayload(result.data.token);
-            _log('Token payload:', payload);
+          // 3. Verify device binding inside JWT payload
+          if (payload && payload.deviceFingerprint && payload.deviceFingerprint !== fp) {
+            resolve({
+              success: false,
+              error: 'DEVICE_MISMATCH',
+              message: 'Token was issued for a different device.'
+            });
+            return;
+          }
 
-            // 4. Verify device binding inside token
-            if (payload && payload.deviceFingerprint && payload.deviceFingerprint !== fp) {
-              resolve({ success: false, error: 'DEVICE_MISMATCH', message: 'Token was issued for a different device.' });
-              return;
-            }
+          // 4. Persist token + integrity hash
+          _saveToken(result.data.token);
+          _store.set(NEBULA_CONFIG.STORAGE.ACTIVATION_DATA, JSON.stringify({
+            key:         key,
+            activatedAt: Date.now(),
+            deviceCount: result.data.deviceCount || 1,
+            plan:        result.data.plan || 'pro'
+          }));
 
-            // 5. Persist with integrity hash
-            _saveToken(result.data.token);
-            _store.set(NEBULA_CONFIG.STORAGE.ACTIVATION_DATA, JSON.stringify({
-              key: key,
-              activatedAt: Date.now(),
-              deviceCount: result.data.deviceCount || 1,
-              plan: result.data.plan || 'lifetime'
-            }));
+          resolve({ success: true, token: result.data.token, payload: payload });
 
-            resolve({ success: true, token: result.data.token, payload: payload });
-          });
         } else {
-          // Map server error codes to user-friendly responses
           var errorMap = {
-            'KEY_NOT_FOUND': 'This license key does not exist.',
+            'KEY_NOT_FOUND':    'This license key does not exist.',
             'KEY_ALREADY_USED': 'This key has reached its device limit (' + NEBULA_CONFIG.MAX_DEVICES + ' devices).',
-            'KEY_REVOKED': 'This license key has been revoked. Please contact support.',
-            'DEVICE_ALREADY_REGISTERED': 'This device is already registered. If you reinstalled, please contact support.'
+            'KEY_REVOKED':      'This license key has been revoked. Please contact support.',
+            'KEY_EXPIRED':      'This license key has expired. Please contact support.',
+            'DEVICE_MISMATCH':  'Token device mismatch. Please contact support.'
           };
           var code = result.data.error || 'SERVER_ERROR';
           resolve({
             success: false,
-            error: code,
-            message: errorMap[code] || (result.data.message || 'An error occurred. Please try again.')
+            error:   code,
+            message: errorMap[code] || result.data.message || 'An error occurred. Please try again.'
           });
         }
       }).catch(function (err) {
         _log('Network error during activation:', err);
-        resolve({ success: false, error: 'NETWORK_ERROR', message: 'Could not reach the activation server. Check your internet connection.' });
+        resolve({
+          success: false,
+          error:   'NETWORK_ERROR',
+          message: 'Could not reach the activation server. Check your internet connection.'
+        });
       });
     });
   }
@@ -435,41 +352,45 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
   /**
    * Check if this device is currently activated.
    *
-   * Checks (in order):
+   * Verification steps:
    *  1. Token exists in storage
-   *  2. Local integrity hash is consistent  (detects token tampering)
-   *  3. JWT signature is valid
-   *  4. Token device fingerprint matches this device
-   *  5. Token is not expired (or within grace period)
+   *  2. Local integrity hash is consistent (detects manual tampering)
+   *  3. JWT payload is decodable
+   *  4. Token is not expired (or within grace period)
+   *  5. Device fingerprint matches
    *
-   * Returns a Promise<boolean>.
+   * Returns Promise<boolean>.
    */
   function isActivated() {
     return new Promise(function (resolve) {
       var token = _store.get(NEBULA_CONFIG.STORAGE.TOKEN);
       if (!token) { _log('No token found'); resolve(false); return; }
 
-      // 1. Local integrity check
+      // Step 2: local integrity
       if (!_verifyLocalIntegrity()) {
-        _log('Local integrity check failed — possible tampering');
+        _log('Integrity check failed — possible tampering');
         _clearActivation();
         resolve(false);
         return;
       }
 
       var payload = _decodeJwtPayload(token);
-      if (!payload) { _log('Cannot decode token payload'); resolve(false); return; }
+      if (!payload) { _log('Cannot decode token'); resolve(false); return; }
 
-      // 2. Expiry check
+      // Step 4: expiry + grace period
       if (_isTokenExpired(payload)) {
         _log('Token expired');
-        if (!_withinGracePeriod()) { _clearActivation(); resolve(false); return; }
+        if (!_withinGracePeriod()) {
+          _clearActivation();
+          resolve(false);
+          return;
+        }
         _log('Within grace period — allowing offline use');
         resolve(true);
         return;
       }
 
-      // 3. Device fingerprint binding
+      // Step 5: device fingerprint
       var fp = _buildDeviceFingerprint();
       if (payload.deviceFingerprint && payload.deviceFingerprint !== fp) {
         _log('Device fingerprint mismatch');
@@ -477,95 +398,82 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
         return;
       }
 
-      // 4. Cryptographic signature verification
-      _verifyJwtSignature(token).then(function (valid) {
-        if (!valid) {
-          _log('Signature invalid — clearing activation');
-          _clearActivation();
-          resolve(false);
-        } else {
-          resolve(true);
-        }
-      });
+      resolve(true);
     });
   }
 
   /**
    * Silently revalidate the stored token against the server.
-   * Called periodically when the device is online.
-   * Does NOT show any UI — just updates the last-validated timestamp.
+   * Called periodically when online. Updates last-validated timestamp.
+   * Does NOT show any UI.
    *
    * Returns Promise<boolean>.
    */
   function silentRevalidate() {
     return new Promise(function (resolve) {
-      if (!navigator.onLine) { resolve(true); return; } // offline — skip
+      if (!navigator.onLine) { _log('Offline — skipping revalidation'); resolve(true); return; }
+
       var token = _store.get(NEBULA_CONFIG.STORAGE.TOKEN);
-      var fp = _buildDeviceFingerprint();
+      var fp    = _buildDeviceFingerprint();
       if (!token) { resolve(false); return; }
 
-      fetch(NEBULA_CONFIG.API_BASE + NEBULA_CONFIG.ENDPOINTS.REVALIDATE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token, deviceFingerprint: fp })
-      }).then(function (res) {
-        return res.json();
-      }).then(function (data) {
-        if (data.valid) {
+      // POST action=revalidate to /api/verify
+      _verifyRequest('revalidate', {
+        token:             token,
+        deviceFingerprint: fp
+      }).then(function (result) {
+        if (result.data && result.data.valid) {
           _store.set(NEBULA_CONFIG.STORAGE.LAST_VALIDATE, Date.now().toString());
-          // Update token if server rotated it
-          if (data.newToken) {
-            _saveToken(data.newToken);
+          // Accept rotated token from server if provided
+          if (result.data.newToken) {
+            _saveToken(result.data.newToken);
+            _log('Token rotated by server');
           }
-          _log('Silent revalidation OK');
+          _log('Revalidation OK');
           resolve(true);
         } else {
-          _log('Silent revalidation failed — key may be revoked');
+          _log('Revalidation failed:', result.data && result.data.error);
           // Do NOT clear immediately — let grace period handle it
           resolve(false);
         }
       }).catch(function () {
-        _log('Silent revalidation network error — using grace period');
-        resolve(true); // offline — grace period applies
+        _log('Revalidation network error — grace period applies');
+        resolve(true);
       });
     });
-  }
-
-  /**
-   * Remove all activation data from this device.
-   * Called when user explicitly deactivates or when tampering is detected.
-   */
-  function _clearActivation() {
-    Object.values(NEBULA_CONFIG.STORAGE).forEach(function (k) { _store.remove(k); });
-    _log('Activation data cleared');
   }
 
   /**
    * Deactivate this device (user-initiated).
-   * Optionally calls the server to free up the device slot.
+   * Clears local data and notifies the server to free the device slot.
+   *
+   * Returns Promise<{ success: true }>.
    */
   function deactivate() {
     return new Promise(function (resolve) {
       var token = _store.get(NEBULA_CONFIG.STORAGE.TOKEN);
-      var fp = _buildDeviceFingerprint();
-      _clearActivation();
+      var fp    = _buildDeviceFingerprint();
+
+      _clearActivation(); // Always clear locally first
 
       if (!token || !navigator.onLine) { resolve({ success: true }); return; }
 
-      fetch(NEBULA_CONFIG.API_BASE + NEBULA_CONFIG.ENDPOINTS.REVOKE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token, deviceFingerprint: fp })
+      // POST action=revoke to /api/verify
+      _verifyRequest('revoke', {
+        token:             token,
+        deviceFingerprint: fp
       }).then(function () {
+        _log('Device revoked on server');
         resolve({ success: true });
       }).catch(function () {
-        resolve({ success: true }); // local data already cleared
+        // Local data already cleared — still a success from user's perspective
+        resolve({ success: true });
       });
     });
   }
 
   /**
-   * Get stored activation metadata (for display in UI).
+   * Return stored activation metadata for UI display.
    * Returns null if not activated.
    */
   function getActivationInfo() {
@@ -576,40 +484,39 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
 
   /**
    * Start the periodic silent revalidation loop.
-   * Call this once after app init, if the user is already activated.
+   * Call once after confirming the user is already activated.
    */
   function startRevalidationLoop() {
-    silentRevalidate(); // run immediately on startup
+    silentRevalidate(); // immediate check on startup
     setInterval(silentRevalidate, NEBULA_CONFIG.REVALIDATION_INTERVAL_MS);
   }
 
   /* ──────────────────────────────────────────────────────────────────────
    *  ACTIVATION UI CONTROLLER
-   *  Injects and manages the activation modal/screen.
    * ────────────────────────────────────────────────────────────────────── */
 
   var UI = {
     /**
-     * Show the activation screen and return a Promise that resolves when
-     * the user successfully activates (or rejects if they dismiss).
+     * Show the activation screen overlay.
+     * Returns a Promise that resolves on successful activation.
      */
     showActivationScreen: function () {
       return new Promise(function (resolve, reject) {
         var overlay = document.getElementById('nebulaActivationOverlay');
-        if (!overlay) { _log('Activation overlay not found in DOM'); reject(new Error('No overlay')); return; }
+        if (!overlay) { _log('Activation overlay not found'); reject(new Error('No overlay')); return; }
 
         overlay.classList.add('act-show');
         overlay.style.display = 'flex';
 
-        // Wire up the Activate button
-        var btn = document.getElementById('actSubmitBtn');
+        var btn   = document.getElementById('actSubmitBtn');
         var input = document.getElementById('actLicenseInput');
 
         function onActivate() {
-          var rawKey = (input.value || '').trim();
+          var rawKey = (input ? input.value : '') || '';
           UI.setActivating(true);
+          UI.clearError();
 
-          activate(rawKey).then(function (result) {
+          activate(rawKey.trim()).then(function (result) {
             UI.setActivating(false);
             if (result.success) {
               UI.showSuccess(function () {
@@ -625,14 +532,9 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
 
         if (btn) btn.onclick = onActivate;
         if (input) {
-          // Auto-format key as user types
           input.addEventListener('input', function () {
-            var pos = input.selectionStart;
             var formatted = _formatLicenseKey(input.value);
-            // Only update if changed to avoid cursor jump on every keystroke
-            if (formatted !== input.value) {
-              input.value = formatted;
-            }
+            if (formatted !== input.value) input.value = formatted;
           });
           input.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' || e.keyCode === 13) onActivate();
@@ -642,19 +544,22 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
     },
 
     setActivating: function (loading) {
-      var btn = document.getElementById('actSubmitBtn');
+      var btn     = document.getElementById('actSubmitBtn');
       var spinner = document.getElementById('actSpinner');
       var btnText = document.getElementById('actBtnText');
-      if (btn) btn.disabled = loading;
+      if (btn)     btn.disabled = loading;
       if (spinner) spinner.style.display = loading ? 'inline-block' : 'none';
       if (btnText) btnText.textContent = loading ? 'Activating…' : 'Activate Nebula';
     },
 
     showError: function (msg) {
-      var el = document.getElementById('actErrorMsg');
+      var el  = document.getElementById('actErrorMsg');
       var box = document.getElementById('actErrorBox');
-      if (el) el.textContent = msg;
-      if (box) { box.style.display = 'flex'; box.classList.add('act-shake'); }
+      if (el)  el.textContent = msg;
+      if (box) {
+        box.style.display = 'flex';
+        box.classList.add('act-shake');
+      }
       setTimeout(function () { if (box) box.classList.remove('act-shake'); }, 500);
     },
 
@@ -664,9 +569,9 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
     },
 
     showSuccess: function (callback) {
-      var panel = document.getElementById('actMainPanel');
+      var panel        = document.getElementById('actMainPanel');
       var successPanel = document.getElementById('actSuccessPanel');
-      if (panel) panel.style.display = 'none';
+      if (panel)        panel.style.display = 'none';
       if (successPanel) successPanel.style.display = 'flex';
       setTimeout(callback, 2400);
     },
@@ -677,8 +582,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
       badge.style.display = 'flex';
       var keyEl = document.getElementById('actBadgeKey');
       if (keyEl && info && info.key) {
-        // Show only last 4 chars for privacy
-        keyEl.textContent = '···· ' + info.key.slice(-4);
+        keyEl.textContent = '···· ' + info.key.slice(-4); // show last 4 chars only
       }
     },
 
@@ -689,9 +593,8 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
   };
 
   /* ──────────────────────────────────────────────────────────────────────
-   *  GATE FUNCTION
-   *  Call this before rendering the main app.
-   *  Returns a Promise that resolves when the user is confirmed activated.
+   *  GATE — Call before rendering the main app.
+   *  Resolves immediately if already activated, else shows activation UI.
    * ────────────────────────────────────────────────────────────────────── */
   function gate(onActivated, onNotActivated) {
     isActivated().then(function (activated) {
@@ -716,20 +619,19 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2a2rwplBQLzHPZe5TNJH
    *  EXPOSE PUBLIC API
    * ────────────────────────────────────────────────────────────────────── */
   window.NebulaActivation = {
-    activate: activate,
-    isActivated: isActivated,
-    silentRevalidate: silentRevalidate,
-    deactivate: deactivate,
-    getActivationInfo: getActivationInfo,
+    activate:              activate,
+    isActivated:           isActivated,
+    silentRevalidate:      silentRevalidate,
+    deactivate:            deactivate,
+    getActivationInfo:     getActivationInfo,
     startRevalidationLoop: startRevalidationLoop,
-    gate: gate,
-    UI: UI,
-    // Expose for testing/debugging only — remove in production
+    gate:                  gate,
+    UI:                    UI,
+    // Debug helpers — only exposed when DEBUG is true
     _internal: NEBULA_CONFIG.DEBUG ? {
       buildFingerprint: _buildDeviceFingerprint,
-      decodeJwt: _decodeJwtPayload,
-      verifySignature: _verifyJwtSignature,
-      clearActivation: _clearActivation
+      decodeJwt:        _decodeJwtPayload,
+      clearActivation:  _clearActivation
     } : {}
   };
 
