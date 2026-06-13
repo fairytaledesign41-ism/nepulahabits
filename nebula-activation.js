@@ -40,7 +40,7 @@
      * In production: 'https://api.yourdomain.com'
      * For local dev:  'http://localhost:3000'
      */
-    API_BASE: 'https://api.yourdomain.com',
+    API_BASE: 'https://nepulahabits.vercel.app',
 
     /**
      * Activation endpoint paths.
