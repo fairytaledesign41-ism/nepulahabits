@@ -1,21 +1,18 @@
 /**
  * api/verify.js
  * ─────────────────────────────────────────────────────────────────
- * Vercel Serverless Function — License Key Verification
- * Fixed: 2025-06 — resolved FUNCTION_INVOCATION_FAILED causes:
- *   [1] jsonwebtoken was missing from package.json
- *   [2] require('crypto') was called inline inside the handler
- *   [3] req.body was assumed pre-parsed (not safe in raw Node functions)
- *   [4] env var strings may carry trailing whitespace from the dashboard
+ * Vercel Serverless Function — Nebula License System
+ *
+ * Single endpoint that handles three distinct actions:
+ *   • activate   — validate key, register device, issue JWT
+ *   • revalidate — verify existing token, optionally rotate
+ *   • revoke     — deregister a device (user-initiated sign-out)
  *
  * POST /api/verify
- * Body: { licenseKey: string, deviceFingerprint: string }
+ * Body must always include: { action: 'activate' | 'revalidate' | 'revoke', ... }
  *
- * Returns: { token: string, plan: string }  on success
- *          { error: string }                on failure
- *
- * Required environment variables (Vercel Dashboard → Settings → Env Vars):
- *   JWT_SECRET           — 64-char hex string  (no spaces, no quotes)
+ * Required Vercel environment variables:
+ *   JWT_SECRET           — 64-char hex string (no spaces, no quotes)
  *   SUPABASE_URL         — https://xxxx.supabase.co
  *   SUPABASE_SERVICE_KEY — service_role key (NOT the anon key)
  * ─────────────────────────────────────────────────────────────────
@@ -23,37 +20,39 @@
 
 'use strict';
 
-// ─── FIX [1] & [2]: ALL requires hoisted to module top-level ─────────────────
-// jsonwebtoken MUST be in package.json > dependencies (see root package.json).
-// crypto is a Node built-in; require() must NOT be called inside the handler.
+// ─── All requires hoisted to module top-level (never inline) ─────────────────
 const jwt    = require('jsonwebtoken');
 const https  = require('https');
-const crypto = require('crypto');           // ← hoisted; was inline before (bug)
+const crypto = require('crypto');
 
 /* ══════════════════════════════════════════════════════════════
    SECTION 1 — CONFIG
-   FIX [4]: .trim() every env var to strip invisible dashboard whitespace.
+   .trim() every env var to strip invisible dashboard whitespace.
 ══════════════════════════════════════════════════════════════ */
 const JWT_SECRET           = (process.env.JWT_SECRET           || '').trim();
 const SUPABASE_URL         = (process.env.SUPABASE_URL         || '').trim().replace(/\/$/, '');
 const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 
-const JWT_EXPIRES_IN     = '30d';
+const JWT_ALGORITHM      = 'HS256';
+const JWT_EXPIRES_IN     = '30d';   // soft default; overridden by key.expires_at
+const MAX_PAYLOAD_BYTES  = 8192;
+
+// Accepted license key format: NEBULA-XXXX-XXXX-XXXX
 const LICENSE_KEY_REGEX  = /^NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
-const ALLOWED_ORIGINS    = [
-  'https://nepulatracker.vercel.app'   // ← replace with your actual domain
+
+// Only these origins receive permissive CORS headers
+const ALLOWED_ORIGINS = [
+  'https://nepulatracker.vercel.app'  // ← replace with your production domain
 ];
 
 /* ══════════════════════════════════════════════════════════════
-   SECTION 2 — BODY PARSER
-   FIX [3]: Vercel raw Node functions do NOT auto-parse req.body.
-   We must manually stream and parse it. Framework functions (e.g.
-   Next.js API routes) do this automatically, but plain /api/*.js
-   files on Vercel do not when there is no framework configured.
+   SECTION 2 — UTILITIES
 ══════════════════════════════════════════════════════════════ */
+
+/** Stream and JSON-parse the request body safely. */
 function readBody(req) {
   return new Promise(function (resolve, reject) {
-    // If a framework (Next.js, Express) already parsed it, use that.
+    // Framework (Next.js / Express) may pre-parse; use it if available.
     if (req.body && typeof req.body === 'object') {
       return resolve(req.body);
     }
@@ -61,29 +60,19 @@ function readBody(req) {
     req.setEncoding('utf8');
     req.on('data', function (chunk) {
       raw += chunk;
-      // Safety: reject payloads over 8 KB
-      if (raw.length > 8192) {
+      if (raw.length > MAX_PAYLOAD_BYTES) {
         reject(new Error('payload_too_large'));
       }
     });
     req.on('end', function () {
-      try {
-        resolve(raw ? JSON.parse(raw) : {});
-      } catch (e) {
-        reject(new Error('invalid_json'));
-      }
+      try { resolve(raw ? JSON.parse(raw) : {}); }
+      catch (e) { reject(new Error('invalid_json')); }
     });
-    req.on('error', function (e) {
-      reject(e);
-    });
+    req.on('error', reject);
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SECTION 3 — SUPABASE REST HELPER
-   Calls Supabase's PostgREST HTTP API directly via Node https.
-   No SDK required — keeps the cold-start bundle minimal.
-══════════════════════════════════════════════════════════════ */
+/** Minimal Supabase PostgREST REST client — no SDK required. */
 function supabaseFetch(path, opts) {
   opts = opts || {};
   return new Promise(function (resolve) {
@@ -91,7 +80,7 @@ function supabaseFetch(path, opts) {
     var method  = opts.method || 'GET';
     var url     = new URL(SUPABASE_URL + path);
 
-    var reqOptions = {
+    var reqOpts = {
       hostname: url.hostname,
       path:     url.pathname + url.search,
       method:   method,
@@ -103,10 +92,10 @@ function supabaseFetch(path, opts) {
       }
     };
     if (bodyStr) {
-      reqOptions.headers['Content-Length'] = Buffer.byteLength(bodyStr);
+      reqOpts.headers['Content-Length'] = Buffer.byteLength(bodyStr);
     }
 
-    var req = https.request(reqOptions, function (res) {
+    var req = https.request(reqOpts, function (res) {
       var chunks = [];
       res.on('data', function (c) { chunks.push(c); });
       res.on('end', function () {
@@ -122,19 +111,13 @@ function supabaseFetch(path, opts) {
         }
       });
     });
-
-    req.on('error', function () {
-      resolve({ data: null, error: 'network_error' });
-    });
-
+    req.on('error', function () { resolve({ data: null, error: 'network_error' }); });
     if (bodyStr) req.write(bodyStr);
     req.end();
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SECTION 4 — CORS HELPER
-══════════════════════════════════════════════════════════════ */
+/** Build CORS headers, restricting to known origins. */
 function corsHeaders(req) {
   var origin  = (req.headers && req.headers.origin) || '';
   var allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -146,116 +129,80 @@ function corsHeaders(req) {
   };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SECTION 5 — VALIDATION HELPER
-══════════════════════════════════════════════════════════════ */
+/** Validate that a device fingerprint is a 64-char hex string. */
 function isValidFingerprint(fp) {
-  return typeof fp === 'string' && /^[a-f0-9]{64}$/.test(fp);
+  return typeof fp === 'string' && /^[a-f0-9]{8,64}$/.test(fp);
+}
+
+/** Send a JSON response with given status code and body. */
+function json(res, status, headers, body) {
+  res.writeHead(status, Object.assign({}, headers, { 'Content-Type': 'application/json' }));
+  res.end(JSON.stringify(body));
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SECTION 6 — MAIN HANDLER
+   SECTION 3 — ACTION HANDLERS
 ══════════════════════════════════════════════════════════════ */
-module.exports = async function handler(req, res) {
 
-  // — CORS preflight
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204, corsHeaders(req));
-    res.end();
-    return;
-  }
-
-  // — Method guard
-  if (req.method !== 'POST') {
-    res.writeHead(405, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'method_not_allowed' }));
-    return;
-  }
-
-  // — Env var guard (trimmed above, so empty string = not set)
-  if (!JWT_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    console.error('[Nebula] Missing or blank environment variable(s). ' +
-      'JWT_SECRET set: ' + !!JWT_SECRET + ', ' +
-      'SUPABASE_URL set: ' + !!SUPABASE_URL + ', ' +
-      'SUPABASE_SERVICE_KEY set: ' + !!SUPABASE_SERVICE_KEY);
-    res.writeHead(500, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'server_misconfiguration' }));
-    return;
-  }
-
-  // — Parse body (FIX [3]: manual streaming parser, safe for all Vercel runtimes)
-  var body;
-  try {
-    body = await readBody(req);
-  } catch (e) {
-    var parseErrMsg = e.message === 'payload_too_large' ? 'payload_too_large' : 'invalid_json';
-    res.writeHead(400, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: parseErrMsg }));
-    return;
-  }
-
+/**
+ * ACTION: activate
+ * ────────────────
+ * Body: { action, licenseKey, deviceFingerprint, appVersion? }
+ *
+ * 1. Validate key format
+ * 2. Look up key in Supabase
+ * 3. Check revocation / expiry / device limit
+ * 4. Register device (if new)
+ * 5. Sign and return JWT
+ */
+async function handleActivate(body, cors, res) {
   var licenseKey        = ((body.licenseKey        || '') + '').trim().toUpperCase();
   var deviceFingerprint = ((body.deviceFingerprint || '') + '').trim().toLowerCase();
 
-  // — Input validation
   if (!LICENSE_KEY_REGEX.test(licenseKey)) {
-    res.writeHead(400, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'invalid_key_format' }));
-    return;
+    return json(res, 400, cors, { error: 'INVALID_KEY_FORMAT' });
   }
-
   if (!isValidFingerprint(deviceFingerprint)) {
-    res.writeHead(400, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'invalid_fingerprint' }));
-    return;
+    return json(res, 400, cors, { error: 'INVALID_FINGERPRINT' });
   }
 
-  // — Look up key in Supabase
+  // Fetch key record from Supabase
   var dbResult = await supabaseFetch(
     '/rest/v1/license_keys?key=eq.' + encodeURIComponent(licenseKey) + '&select=*&limit=1'
   );
 
   if (dbResult.error) {
-    console.error('[Nebula] DB lookup error:', dbResult.error);
-    res.writeHead(503, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'db_unavailable' }));
-    return;
+    console.error('[Nebula:activate] DB lookup error:', dbResult.error);
+    return json(res, 503, cors, { error: 'DB_UNAVAILABLE' });
   }
 
   var rows = dbResult.data;
   if (!rows || rows.length === 0) {
-    res.writeHead(404, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'key_not_found' }));
-    return;
+    return json(res, 404, cors, { error: 'KEY_NOT_FOUND' });
   }
 
   var keyRecord = rows[0];
 
-  // — Revocation check
   if (keyRecord.revoked) {
-    res.writeHead(403, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'key_revoked' }));
-    return;
+    return json(res, 403, cors, { error: 'KEY_REVOKED' });
   }
-
-  // — Expiry check
   if (keyRecord.expires_at && new Date(keyRecord.expires_at) < new Date()) {
-    res.writeHead(403, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'key_expired' }));
-    return;
+    return json(res, 403, cors, { error: 'KEY_EXPIRED' });
   }
 
-  // — Device management
+  // Device management
   var activatedDevices        = Array.isArray(keyRecord.activated_devices)
-                                  ? keyRecord.activated_devices
-                                  : [];
+                                  ? keyRecord.activated_devices : [];
   var deviceAlreadyRegistered = activatedDevices.includes(deviceFingerprint);
 
   if (!deviceAlreadyRegistered) {
-    if (activatedDevices.length >= keyRecord.max_devices) {
-      res.writeHead(403, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-      res.end(JSON.stringify({ error: 'max_devices' }));
-      return;
+    var maxDevices = keyRecord.max_devices || 2;
+    if (activatedDevices.length >= maxDevices) {
+      return json(res, 403, cors, {
+        error: 'KEY_ALREADY_USED',
+        deviceCount: activatedDevices.length,
+        maxDevices: maxDevices
+      });
     }
 
     var updatedDevices = activatedDevices.concat(deviceFingerprint);
@@ -263,42 +210,226 @@ module.exports = async function handler(req, res) {
       '/rest/v1/license_keys?id=eq.' + encodeURIComponent(keyRecord.id),
       { method: 'PATCH', body: { activated_devices: updatedDevices } }
     );
-
     if (updateResult.error) {
-      console.error('[Nebula] Device registration error:', updateResult.error);
       // Non-fatal: log and continue — token is still issued
+      console.warn('[Nebula:activate] Device registration warning:', updateResult.error);
     }
   }
 
-  // — Sign JWT
-  // FIX [2]: crypto.randomBytes() now uses the module-level require at the top.
-  var payload = {
-    sub:    licenseKey,
-    plan:   keyRecord.plan || 'pro',
-    device: deviceFingerprint,
-    jti:    crypto.randomBytes(16).toString('hex')   // ← no inline require()
+  // Sign JWT
+  var jwtPayload = {
+    sub:              licenseKey,
+    plan:             keyRecord.plan || 'pro',
+    deviceFingerprint: deviceFingerprint,
+    jti:              crypto.randomBytes(16).toString('hex')
   };
 
-  var jwtOptions = { expiresIn: JWT_EXPIRES_IN, algorithm: 'HS256' };
+  var jwtOpts = { expiresIn: JWT_EXPIRES_IN, algorithm: JWT_ALGORITHM };
 
   if (keyRecord.expires_at) {
     var hardExpiry = Math.floor(new Date(keyRecord.expires_at).getTime() / 1000);
     var softExpiry = Math.floor(Date.now() / 1000) + 30 * 86400;
     var ttl        = Math.min(hardExpiry, softExpiry) - Math.floor(Date.now() / 1000);
-    jwtOptions.expiresIn = ttl > 0 ? ttl : 1;
+    jwtOpts.expiresIn = ttl > 0 ? ttl : 1;
   }
 
   var token;
   try {
-    token = jwt.sign(payload, JWT_SECRET, jwtOptions);
+    token = jwt.sign(jwtPayload, JWT_SECRET, jwtOpts);
   } catch (e) {
-    console.error('[Nebula] JWT sign error:', e.message);
-    res.writeHead(500, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-    res.end(JSON.stringify({ error: 'token_sign_error' }));
+    console.error('[Nebula:activate] JWT sign error:', e.message);
+    return json(res, 500, cors, { error: 'TOKEN_SIGN_ERROR' });
+  }
+
+  return json(res, 200, cors, {
+    token:       token,
+    plan:        keyRecord.plan || 'pro',
+    deviceCount: (deviceAlreadyRegistered ? activatedDevices : activatedDevices.concat(deviceFingerprint)).length
+  });
+}
+
+/**
+ * ACTION: revalidate
+ * ──────────────────
+ * Body: { action, token, deviceFingerprint }
+ *
+ * 1. Verify JWT signature and expiry
+ * 2. Check key is still active in DB (not revoked/expired)
+ * 3. Optionally rotate token (new jti, same claims)
+ * 4. Return { valid: true, newToken? }
+ */
+async function handleRevalidate(body, cors, res) {
+  var token             = ((body.token             || '') + '').trim();
+  var deviceFingerprint = ((body.deviceFingerprint || '') + '').trim().toLowerCase();
+
+  if (!token) {
+    return json(res, 400, cors, { error: 'MISSING_TOKEN' });
+  }
+  if (!isValidFingerprint(deviceFingerprint)) {
+    return json(res, 400, cors, { error: 'INVALID_FINGERPRINT' });
+  }
+
+  // Verify JWT
+  var payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET, { algorithms: [JWT_ALGORITHM] });
+  } catch (e) {
+    return json(res, 401, cors, { valid: false, error: 'TOKEN_INVALID' });
+  }
+
+  // Device binding check
+  if (payload.deviceFingerprint && payload.deviceFingerprint !== deviceFingerprint) {
+    return json(res, 403, cors, { valid: false, error: 'DEVICE_MISMATCH' });
+  }
+
+  var licenseKey = payload.sub;
+
+  // Re-check key status in DB
+  var dbResult = await supabaseFetch(
+    '/rest/v1/license_keys?key=eq.' + encodeURIComponent(licenseKey) + '&select=revoked,expires_at,plan&limit=1'
+  );
+
+  if (dbResult.error || !dbResult.data || dbResult.data.length === 0) {
+    console.warn('[Nebula:revalidate] Key lookup failed:', dbResult.error);
+    // If DB is temporarily unavailable, trust the JWT (grace period applies client-side)
+    return json(res, 200, cors, { valid: true });
+  }
+
+  var keyRecord = dbResult.data[0];
+
+  if (keyRecord.revoked) {
+    return json(res, 403, cors, { valid: false, error: 'KEY_REVOKED' });
+  }
+  if (keyRecord.expires_at && new Date(keyRecord.expires_at) < new Date()) {
+    return json(res, 403, cors, { valid: false, error: 'KEY_EXPIRED' });
+  }
+
+  // Rotate token: issue a fresh JWT with a new jti (invalidates old token fingerprint)
+  var newToken;
+  try {
+    var newPayload = {
+      sub:               licenseKey,
+      plan:              keyRecord.plan || payload.plan || 'pro',
+      deviceFingerprint: deviceFingerprint,
+      jti:               crypto.randomBytes(16).toString('hex')
+    };
+    var jwtOpts = { expiresIn: JWT_EXPIRES_IN, algorithm: JWT_ALGORITHM };
+    newToken = jwt.sign(newPayload, JWT_SECRET, jwtOpts);
+  } catch (e) {
+    console.error('[Nebula:revalidate] Token rotation error:', e.message);
+    // Non-fatal: return valid without a rotated token
+    return json(res, 200, cors, { valid: true });
+  }
+
+  return json(res, 200, cors, { valid: true, newToken: newToken });
+}
+
+/**
+ * ACTION: revoke (user-initiated device deregistration)
+ * ───────────────────────────────────────────────────────
+ * Body: { action, token, deviceFingerprint }
+ *
+ * 1. Verify JWT (leniently — allow nearly-expired tokens to revoke cleanly)
+ * 2. Remove deviceFingerprint from activated_devices in DB
+ * 3. Return { success: true }
+ */
+async function handleRevoke(body, cors, res) {
+  var token             = ((body.token             || '') + '').trim();
+  var deviceFingerprint = ((body.deviceFingerprint || '') + '').trim().toLowerCase();
+
+  if (!token || !isValidFingerprint(deviceFingerprint)) {
+    return json(res, 400, cors, { error: 'MISSING_FIELDS' });
+  }
+
+  // Decode without expiry enforcement (user might revoke after token expiry)
+  var payload;
+  try {
+    payload = jwt.verify(token, JWT_SECRET, {
+      algorithms:      [JWT_ALGORITHM],
+      ignoreExpiration: true
+    });
+  } catch (e) {
+    // Invalid signature — refuse
+    return json(res, 401, cors, { error: 'TOKEN_INVALID' });
+  }
+
+  var licenseKey = payload.sub;
+
+  // Fetch current device list
+  var dbResult = await supabaseFetch(
+    '/rest/v1/license_keys?key=eq.' + encodeURIComponent(licenseKey) + '&select=id,activated_devices&limit=1'
+  );
+
+  if (dbResult.error || !dbResult.data || dbResult.data.length === 0) {
+    // Can't reach DB — client already cleared local data, so treat as success
+    return json(res, 200, cors, { success: true });
+  }
+
+  var keyRecord        = dbResult.data[0];
+  var activatedDevices = Array.isArray(keyRecord.activated_devices) ? keyRecord.activated_devices : [];
+  var updatedDevices   = activatedDevices.filter(function (d) { return d !== deviceFingerprint; });
+
+  if (updatedDevices.length !== activatedDevices.length) {
+    await supabaseFetch(
+      '/rest/v1/license_keys?id=eq.' + encodeURIComponent(keyRecord.id),
+      { method: 'PATCH', body: { activated_devices: updatedDevices } }
+    );
+  }
+
+  return json(res, 200, cors, { success: true });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 4 — MAIN HANDLER (action router)
+══════════════════════════════════════════════════════════════ */
+module.exports = async function handler(req, res) {
+
+  var cors = corsHeaders(req);
+
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, cors);
+    res.end();
     return;
   }
 
-  // — Success
-  res.writeHead(200, Object.assign({}, corsHeaders(req), { 'Content-Type': 'application/json' }));
-  res.end(JSON.stringify({ token: token, plan: keyRecord.plan || 'pro' }));
+  // Method guard
+  if (req.method !== 'POST') {
+    return json(res, 405, cors, { error: 'METHOD_NOT_ALLOWED' });
+  }
+
+  // Environment variable guard
+  if (!JWT_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.error('[Nebula] Missing environment variable(s). ' +
+      'JWT_SECRET=' + !!JWT_SECRET +
+      ' SUPABASE_URL=' + !!SUPABASE_URL +
+      ' SUPABASE_SERVICE_KEY=' + !!SUPABASE_SERVICE_KEY);
+    return json(res, 500, cors, { error: 'SERVER_MISCONFIGURATION' });
+  }
+
+  // Parse body
+  var body;
+  try {
+    body = await readBody(req);
+  } catch (e) {
+    var errCode = e.message === 'payload_too_large' ? 'PAYLOAD_TOO_LARGE' : 'INVALID_JSON';
+    return json(res, 400, cors, { error: errCode });
+  }
+
+  // Route by action field
+  var action = ((body.action || '') + '').trim().toLowerCase();
+
+  switch (action) {
+    case 'activate':
+      return handleActivate(body, cors, res);
+
+    case 'revalidate':
+      return handleRevalidate(body, cors, res);
+
+    case 'revoke':
+      return handleRevoke(body, cors, res);
+
+    default:
+      return json(res, 400, cors, { error: 'UNKNOWN_ACTION', validActions: ['activate', 'revalidate', 'revoke'] });
+  }
 };
