@@ -41,7 +41,7 @@
      * Production:  'https://api.yourdomain.com'
      * Local dev:   'http://localhost:3000'
      */
-    API_BASE: 'https://nepulahabits.vercel.app/api',
+    API_BASE: 'https://nepulahabits.vercel.app',
 
     /**
      * Single unified endpoint — all actions POST here.
