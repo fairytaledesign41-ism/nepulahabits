@@ -28,7 +28,8 @@ var NEVER_CACHE_PATTERNS = [
   /\/v1\/license\//,            // activation API
   /\/v1\/license\/activate/,
   /\/v1\/license\/revalidate/,
-  /\/v1\/license\/revoke-device/
+  /\/v1\/license\/revoke-device/,
+  /\/api\/verify/               // هذا هو التعديل المطلوب لربط كودك الحالي
 ];
 
 /** Check if a URL matches any never-cache pattern */
