@@ -2,7 +2,7 @@
   "name": "nepulahabits",
   "version": "1.0.0",
   "private": true,
-  "description": "Nebula Habit Tracker — Vercel serverless backend",
+  "description": "nepulahabits — Vercel serverless backend",
   "engines": {
     "node": "20.x"
   },
