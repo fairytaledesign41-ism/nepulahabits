@@ -8,9 +8,9 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-var CACHE_NAME    = 'nebula-v2';
-var SHELL_CACHE   = 'nebula-shell-v2';
-var DYNAMIC_CACHE = 'nebula-dynamic-v2';
+var CACHE_NAME    = 'nebula-v3';
+var SHELL_CACHE   = 'nebula-shell-v3';
+var DYNAMIC_CACHE = 'nebula-dynamic-v3';
 
 /** Files to cache on install (app shell) */
 var SHELL_ASSETS = [
