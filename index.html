@@ -867,6 +867,14 @@ html[dir="ltr"] .toast { right:28px; }
 </head>
 <body>
 
+<div id="activationScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:#0b0f17;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="text-align:center;padding:40px;">
+    <h2 style="color:#f0f4f8;margin-bottom:20px;font-family:inherit;">Enter License Key</h2>
+    <input id="licenseKey" type="text" placeholder="NEBULA-XXXX-YYYY-ZZZZ" style="padding:12px 20px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#111827;color:#f0f4f8;font-size:15px;width:280px;display:block;margin:0 auto 16px;outline:none;font-family:inherit;" />
+    <button onclick="checkActivation()" style="padding:12px 32px;border-radius:10px;border:none;background:linear-gradient(135deg,#a855f7,#f472b6);color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;">Verify</button>
+  </div>
+</div>
+
 <!-- ===== NEBULA ACTIVATION OVERLAY ===== -->
 <div id="nebula-activation-overlay">
   <div class="act-modal">
@@ -1033,6 +1041,8 @@ html[dir="ltr"] .toast { right:28px; }
 })();
 </script>
 
+
+<div id="mainContent" style="display:none;">
 
 <nav class="sidebar" id="sidebar">
   <div class="logo-wrap" onclick="toggleSidebar()" title="Toggle Sidebar"><i class="fas fa-infinity"></i></div>
@@ -3405,6 +3415,40 @@ var _origRenderAllBadge = renderAll;
 renderAll = function() {
   _origRenderAllBadge();
   nebulaBadgeUpdate();
+};
+</script>
+
+</div><!-- end #mainContent -->
+
+<script>
+function checkActivation() {
+  var key = document.getElementById('licenseKey').value;
+  fetch('https://nepulahabits.vercel.app/api/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'activate', licenseKey: key, deviceFingerprint: 'nebula_user' })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data && data.token) {
+      localStorage.setItem('nebula_access_token', data.token);
+      document.getElementById('mainContent').style.display = 'block';
+      document.getElementById('activationScreen').style.display = 'none';
+    } else {
+      alert(data && data.message ? data.message : 'Invalid license key. Please try again.');
+    }
+  })
+  .catch(function(err) {
+    alert('Verification failed: ' + (err.message || err));
+  });
+}
+
+window.onload = function() {
+  var token = localStorage.getItem('nebula_access_token');
+  if (token) {
+    document.getElementById('activationScreen').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+  }
 };
 </script>
 </body>
