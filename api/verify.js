@@ -37,12 +37,14 @@ const JWT_ALGORITHM      = 'HS256';
 const JWT_EXPIRES_IN     = '30d';   // soft default; overridden by key.expires_at
 const MAX_PAYLOAD_BYTES  = 8192;
 
-// Accepted license key format: NEBULA-XXXX-XXXX-XXXX
-const LICENSE_KEY_REGEX  = /^NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+// Accepted license key formats:
+//   NEBULA-XXXX-XXXX-XXXX  (3-segment with prefix — legacy/admin keys)
+//   XXXX-XXXX-XXXX-XXXX    (4-segment plain — what the frontend sends)
+const LICENSE_KEY_REGEX = /^(?:NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}|[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})$/;
 
 // Only these origins receive permissive CORS headers
 const ALLOWED_ORIGINS = [
-  'https://nepulatracker.vercel.app'  // ← replace with your production domain
+  'https://nepulahabits.vercel.app'
 ];
 
 /* ══════════════════════════════════════════════════════════════
@@ -129,9 +131,14 @@ function corsHeaders(req) {
   };
 }
 
-/** Validate that a device fingerprint is a 64-char hex string. */
+/**
+ * Validate a device fingerprint.
+ * Accepts hex strings of 1–64 chars (covers FNV-1a 32-bit output which
+ * is a variable-length hex string, never longer than 8 chars, as well as
+ * SHA-256 outputs up to 64 chars from future fingerprint upgrades).
+ */
 function isValidFingerprint(fp) {
-  return typeof fp === 'string' && /^[a-f0-9]{8,64}$/.test(fp);
+  return typeof fp === 'string' && /^[a-f0-9]{1,64}$/.test(fp) && fp.length >= 1;
 }
 
 /** Send a JSON response with given status code and body. */
