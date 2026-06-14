@@ -36,7 +36,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
-<script src="nebula-activation.js"></script>
 <style>
 :root {
   --bg-deep: #0b0f17;
@@ -786,216 +785,127 @@ html[dir="ltr"] .toast { right:28px; }
 }
 .notif-dismiss-btn:hover { color: var(--text-secondary); }
 
-/* ===== ACTIVATION SYSTEM STYLES ===== */
-.act-overlay {
+/* ===== NEBULA LICENSE ACTIVATION OVERLAY ===== */
+.neb-act-overlay {
   position: fixed; inset: 0; z-index: 9999;
-  background: linear-gradient(135deg, #080c14 0%, #0b0f17 40%, #0d1120 100%);
-  display: none; align-items: center; justify-content: center;
-  padding: 20px; overflow-y: auto;
-  -webkit-backdrop-filter: blur(0px);
-  font-family: 'Tajawal','Cairo','Inter',system-ui,sans-serif;
+  background: rgba(11,15,23,0.97);
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  padding: 20px;
+  -webkit-animation: fadeUp 0.35s ease; animation: fadeUp 0.35s ease;
 }
-.act-overlay.act-show { display: flex; animation: actFadeIn 0.5s ease; }
-@keyframes actFadeIn { from{opacity:0;transform:scale(0.97)} to{opacity:1;transform:scale(1)} }
-
-.act-card {
+.neb-act-overlay.neb-hidden { display: none !important; }
+.neb-act-card {
   background: var(--bg-card);
-  border: 1px solid rgba(168,85,247,0.2);
-  border-radius: 24px;
-  padding: 44px 40px;
-  max-width: 460px; width: 100%;
-  box-shadow: 0 0 80px rgba(168,85,247,0.15), 0 40px 80px rgba(0,0,0,0.5);
+  border: 1px solid rgba(168,85,247,0.28);
+  border-radius: var(--radius);
+  padding: 40px 36px 32px;
+  max-width: 420px; width: 100%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(168,85,247,0.15), 0 0 0 1px rgba(168,85,247,0.08);
   position: relative; overflow: hidden;
 }
-.act-card::before {
-  content:'';
-  position:absolute; top:0; left:0; right:0; height:1px;
-  background: linear-gradient(90deg, transparent, rgba(168,85,247,0.6), rgba(244,114,182,0.4), transparent);
+.neb-act-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: -webkit-linear-gradient(90deg, var(--neon-purple), var(--neon-pink), var(--neon-purple));
+  background: linear-gradient(90deg, var(--neon-purple), var(--neon-pink), var(--neon-purple));
 }
-
-.act-logo-wrap {
-  display: flex; align-items: center; justify-content: center;
-  margin-bottom: 32px;
-}
-.act-logo {
-  width: 64px; height: 64px; border-radius: 20px;
+.neb-act-logo {
+  width: 62px; height: 62px; border-radius: 18px;
+  background: -webkit-linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
   background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 32px rgba(168,85,247,0.5);
-  font-size: 28px;
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  margin: 0 auto 18px auto;
+  box-shadow: 0 0 28px var(--neon-purple-glow);
+  font-size: 24px; color: #fff;
 }
-.act-headline {
-  font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 8px;
-  background: linear-gradient(135deg, #f0f4f8, var(--neon-purple));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
+.neb-act-title {
+  font-size: 20px; font-weight: 800; letter-spacing: -0.3px;
+  color: var(--text-primary); margin-bottom: 6px;
 }
-.act-subline {
-  font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 32px; line-height: 1.6;
+.neb-act-subtitle {
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: 26px;
 }
-.act-label {
-  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
-  color: var(--text-secondary); margin-bottom: 8px; display: block;
+.neb-act-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 13px 16px;
+  color: var(--text-primary); font-family: inherit; font-size: 14px;
+  text-align: center; letter-spacing: 2px; text-transform: uppercase;
+  outline: none;
+  -webkit-transition: border-color var(--transition), box-shadow var(--transition);
+  transition: border-color var(--transition), box-shadow var(--transition);
+  margin-bottom: 12px;
+  display: block;
 }
-.act-input-wrap { position: relative; margin-bottom: 16px; }
-.act-input {
-  width: 100%; padding: 14px 18px;
-  background: var(--bg-elevated); border: 1.5px solid var(--border);
-  border-radius: var(--radius-sm); color: var(--text-primary);
-  font-family: 'Inter', monospace; font-size: 15px; font-weight: 600;
-  letter-spacing: 2px; text-align: center; outline: none;
-  transition: all var(--transition);
+.neb-act-input:focus {
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 0 3px rgba(168,85,247,0.18);
 }
-.act-input:focus { border-color: var(--neon-purple); box-shadow: 0 0 20px rgba(168,85,247,0.25); }
-.act-input::placeholder { letter-spacing: 1px; font-weight: 400; color: var(--text-muted); }
-
-.act-btn {
-  width: 100%; padding: 14px 20px; border-radius: var(--radius-sm); border: none;
+.neb-act-input::placeholder { color: var(--text-muted); letter-spacing: 1px; text-transform: none; }
+.neb-act-btn {
+  width: 100%; padding: 13px 20px;
+  border-radius: var(--radius-sm); border: none;
+  background: -webkit-linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
   background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
   color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
-  cursor: pointer; transition: all var(--transition);
-  box-shadow: 0 4px 24px rgba(168,85,247,0.4);
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  margin-top: 4px;
+  cursor: pointer; letter-spacing: 0.3px;
+  -webkit-transition: all var(--transition); transition: all var(--transition);
+  box-shadow: 0 4px 20px var(--neon-purple-glow);
+  display: -webkit-flex; display: flex;
+  -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center;
+  gap: 8px;
 }
-.act-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(168,85,247,0.5); }
-.act-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.act-spinner {
-  display: none; width: 16px; height: 16px;
+.neb-act-btn:hover:not(:disabled) {
+  -webkit-transform: translateY(-2px); transform: translateY(-2px);
+  box-shadow: 0 8px 30px var(--neon-purple-glow);
+}
+.neb-act-btn:disabled { opacity: 0.55; cursor: not-allowed; -webkit-transform: none; transform: none; }
+.neb-act-spinner {
+  width: 15px; height: 15px;
   border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
-  border-radius: 50%; animation: actSpin 0.7s linear infinite;
+  border-radius: 50%;
+  -webkit-animation: nebActSpin 0.65s linear infinite;
+  animation: nebActSpin 0.65s linear infinite;
+  display: none;
 }
-@keyframes actSpin { to { transform: rotate(360deg); } }
-
-.act-error-box {
-  display: none; align-items: flex-start; gap: 10px;
-  background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
-  border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 12px;
+@-webkit-keyframes nebActSpin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
+@keyframes nebActSpin { to { transform: rotate(360deg); } }
+.neb-act-msg {
+  font-size: 12px; border-radius: 8px; padding: 8px 14px;
+  margin-top: 12px; display: none; line-height: 1.5;
 }
-.act-error-box i { color: var(--neon-red); margin-top: 1px; flex-shrink: 0; }
-.act-error-msg { font-size: 13px; color: var(--neon-red); line-height: 1.5; }
-@keyframes actShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
-.act-shake { animation: actShake 0.45s ease; }
-
-.act-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-.act-divider span { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.act-divider::before, .act-divider::after { content:''; flex:1; height:1px; background: var(--border); }
-
-.act-trust-row {
-  display: flex; align-items: center; justify-content: center; gap: 20px;
-  flex-wrap: wrap;
+.neb-act-msg.error {
+  display: block;
+  color: var(--neon-red);
+  background: rgba(239,68,68,0.09);
+  border: 1px solid rgba(239,68,68,0.22);
 }
-.act-trust-item {
-  display: flex; align-items: center; gap: 6px;
+.neb-act-msg.success {
+  display: block;
+  color: var(--neon-green);
+  background: rgba(52,211,153,0.09);
+  border: 1px solid rgba(52,211,153,0.22);
+}
+.neb-act-footer {
   font-size: 11px; color: var(--text-muted);
+  margin-top: 18px; line-height: 1.6;
 }
-.act-trust-item i { font-size: 12px; color: var(--neon-green); }
-
-/* Success panel */
-.act-success-panel {
-  display: none; flex-direction: column; align-items: center;
-  text-align: center; padding: 20px 0;
-}
-.act-success-icon {
-  width: 72px; height: 72px; border-radius: 50%;
-  background: rgba(52,211,153,0.12); border: 2px solid var(--neon-green);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 32px; margin-bottom: 20px;
-  box-shadow: 0 0 32px rgba(52,211,153,0.3);
-  animation: actSuccessPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
-}
-@keyframes actSuccessPop { from{transform:scale(0)} to{transform:scale(1)} }
-.act-success-title { font-size: 22px; font-weight: 800; color: var(--neon-green); margin-bottom: 8px; }
-.act-success-sub { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
-
-/* Activated badge in topbar */
-.act-status-badge {
-  display: none; align-items: center; gap: 7px;
-  background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2);
-  border-radius: 10px; padding: 6px 12px;
-  font-size: 11px; font-weight: 600; color: var(--neon-green);
-}
-.act-status-badge i { font-size: 10px; }
-.act-status-badge .act-badge-key { color: var(--text-muted); font-size: 11px; }
+/* ===== END ACTIVATION OVERLAY ===== */
 </style>
 </head>
 <body>
 
-<!-- ╔══════════════════════════════════════════════════════════════════╗ -->
-<!-- ║  NEBULA ACTIVATION OVERLAY                                      ║ -->
-<!-- ║  Shown before the app loads if no valid license is found.       ║ -->
-<!-- ╚══════════════════════════════════════════════════════════════════╝ -->
-<div class="act-overlay" id="nebulaActivationOverlay" aria-modal="true" role="dialog" aria-labelledby="actHeadline">
-
-  <div class="act-card">
-
-    <!-- MAIN PANEL -->
-    <div id="actMainPanel">
-      <div class="act-logo-wrap">
-        <div class="act-logo"><i class="fas fa-infinity"></i></div>
-      </div>
-
-      <h1 class="act-headline" id="actHeadline">Activate Nebula</h1>
-      <p class="act-subline">Enter your lifetime license key to unlock<br>your personal habit tracker.</p>
-
-      <label class="act-label" for="actLicenseInput"><i class="fas fa-key" style="margin-inline-end:6px;color:var(--neon-purple)"></i>License Key</label>
-      <div class="act-input-wrap">
-        <input
-          class="act-input"
-          id="actLicenseInput"
-          type="text"
-          placeholder="XXXX-XXXX-XXXX-XXXX"
-          maxlength="19"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="characters"
-          spellcheck="false"
-          aria-label="License Key"
-        >
-      </div>
-
-      <!-- Error box -->
-      <div class="act-error-box" id="actErrorBox" role="alert">
-        <i class="fas fa-exclamation-circle"></i>
-        <span class="act-error-msg" id="actErrorMsg">Invalid license key.</span>
-      </div>
-
-      <button class="act-btn" id="actSubmitBtn" style="margin-top:20px;">
-        <span class="act-spinner" id="actSpinner"></span>
-        <span id="actBtnText">Activate Nebula</span>
-      </button>
-
-      <div class="act-divider"><span>Lifetime License</span></div>
-
-      <div class="act-trust-row">
-        <div class="act-trust-item"><i class="fas fa-check-circle"></i> No subscription</div>
-        <div class="act-trust-item"><i class="fas fa-check-circle"></i> Offline support</div>
-        <div class="act-trust-item"><i class="fas fa-check-circle"></i> 2 devices</div>
-      </div>
-
-      <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:20px;line-height:1.5;">
-        Need a license key? Contact support.<br>
-        Having trouble? Ensure you're online for first-time activation.
-      </p>
-    </div>
-
-    <!-- SUCCESS PANEL (shown after successful activation) -->
-    <div class="act-success-panel" id="actSuccessPanel">
-      <div class="act-success-icon">✓</div>
-      <div class="act-success-title">Activated!</div>
-      <p class="act-success-sub">Your lifetime license has been verified.<br>Welcome to Nebula. Loading your app…</p>
-    </div>
-
-  </div>
-</div>
-
-<!-- Activation status badge (shown in topbar when activated) -->
-<div class="act-status-badge" id="actStatusBadge" title="Lifetime license active">
-  <i class="fas fa-shield-check"></i>
-  <span>Licensed</span>
-  <span class="act-badge-key" id="actBadgeKey"></span>
-</div>
+<nav class="sidebar" id="sidebar">
   <div class="logo-wrap" onclick="toggleSidebar()" title="Toggle Sidebar"><i class="fas fa-infinity"></i></div>
   <div class="nav-item active" onclick="navigate(this,'dashboard')"><i class="fas fa-chart-pie"></i><span class="nav-label" data-key="navDashboard">Dashboard</span></div>
   <div class="nav-item" onclick="navigate(this,'tracker')"><i class="fas fa-calendar-check"></i><span class="nav-label" data-key="navTracker">Tracker</span></div>
@@ -1021,7 +931,6 @@ html[dir="ltr"] .toast { right:28px; }
         <option value="fr">Français</option>
       </select>
       <div class="date-chip" id="currentDateChip"></div>
-      <div id="actTopbarBadge" style="display:none;"></div>
       <button class="btn btn-ghost" id="saveBtn" onclick="downloadData()" title="">
         <i class="fas fa-download"></i> <span data-key="btnSave">Save</span>
         <span id="unsavedDot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--neon-amber);margin-right:4px;margin-left:4px;box-shadow:0 0 6px var(--neon-amber-glow);"></span>
@@ -1355,6 +1264,40 @@ html[dir="ltr"] .toast { right:28px; }
     </div>
   </div>
 </div>
+
+
+<!-- ===== NEBULA LICENSE ACTIVATION OVERLAY ===== -->
+<div class="neb-act-overlay neb-hidden" id="nebActOverlay" role="dialog" aria-modal="true" aria-labelledby="nebActTitle">
+  <div class="neb-act-card">
+    <div class="neb-act-logo"><i class="fas fa-infinity"></i></div>
+    <div class="neb-act-title" id="nebActTitle">Activate Nebula</div>
+    <div class="neb-act-subtitle">
+      Enter your license key to unlock full access.<br>
+      Your data stays private — the key is verified securely online.
+    </div>
+    <input
+      type="text"
+      class="neb-act-input"
+      id="nebActInput"
+      placeholder="NEBULA-XXXX-YYYY-ZZZZ"
+      maxlength="22"
+      autocomplete="off"
+      spellcheck="false"
+      inputmode="text"
+    />
+    <button class="neb-act-btn" id="nebActBtn" onclick="nebActSubmit()">
+      <span class="neb-act-spinner" id="nebActSpinner"></span>
+      <i class="fas fa-key" id="nebActBtnIcon"></i>
+      <span id="nebActBtnText">Activate</span>
+    </button>
+    <div class="neb-act-msg" id="nebActMsg"></div>
+    <div class="neb-act-footer">
+      Your device fingerprint is hashed locally and never stored in plain text.<br>
+      Need a key? Contact your Nebula provider.
+    </div>
+  </div>
+</div>
+<!-- ===== END ACTIVATION OVERLAY ===== -->
 
 <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg">Saved</span></div>
 
@@ -2189,7 +2132,6 @@ function hideResetConfirm(){
 }
 function doReset(){
   try {
-    // Clear habit/user data only — activation data is preserved intentionally
     _safeStorage.removeItem('nebula_habit_tracker_multi');
     _safeStorage.removeItem('nebula_lang');
     _safeStorage.removeItem('nebula_last_backup');
@@ -2199,8 +2141,6 @@ function doReset(){
     _safeStorage.removeItem('nebula_longTermHabits');
     _safeStorage.removeItem('nebula_notif_dismissed');
     _safeStorage.removeItem('nebula_notif_fired');
-    // NOTE: nebula_act_token, nebula_act_fp, nebula_act_data, nebula_act_ih
-    // are deliberately NOT cleared — the license activation persists across resets
   } catch(e){}
   hideResetConfirm();
   window.location.reload();
@@ -2904,68 +2844,10 @@ document.addEventListener('keydown', function(e){
 
 // DOMContentLoaded — cross-browser safe
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', _nebulaBootstrap);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  _nebulaBootstrap();
+  init();
 }
-
-/**
- * ╔══════════════════════════════════════════════════════════════════════╗
- * ║  NEBULA BOOTSTRAP — Activation Gate                                 ║
- * ║  Checks license before allowing app to run.                        ║
- * ╚══════════════════════════════════════════════════════════════════════╝
- *
- * Flow:
- *  1. Check localStorage for a valid, tamper-proof activation token
- *  2a. If valid → show activated badge → init() app normally
- *  2b. If not activated → show activation overlay → wait for user to enter key
- *       → on success → init() app
- *
- * The activation module (nebula-activation.js) handles all crypto,
- * fingerprinting, and API calls. This code only wires UI to that module.
- */
-function _nebulaBootstrap() {
-  // If NebulaActivation module failed to load, fall back to direct init
-  if (typeof window.NebulaActivation === 'undefined') {
-    console.warn('[Nebula] Activation module not loaded — running without license check.');
-    init();
-    return;
-  }
-
-  window.NebulaActivation.gate(
-    // onActivated callback
-    function(info) {
-      // Move the floating badge into the topbar
-      var floatingBadge = document.getElementById('actStatusBadge');
-      var topbarSlot    = document.getElementById('actTopbarBadge');
-      if (floatingBadge && topbarSlot) {
-        floatingBadge.style.display = 'flex';
-        floatingBadge.style.position = 'static';
-        topbarSlot.style.display = 'inline-flex';
-        topbarSlot.appendChild(floatingBadge);
-      }
-      init();
-    },
-    // onNotActivated callback (app hidden until activation completes)
-    function() {
-      // App content stays hidden — activation overlay is shown by the module
-      var main = document.querySelector('.main');
-      var nav  = document.querySelector('.sidebar');
-      if (main) main.style.visibility = 'hidden';
-      if (nav)  nav.style.visibility  = 'hidden';
-    }
-  );
-}
-
-// Once activation is confirmed, ensure main/sidebar are visible
-var _origInit = init;
-init = function() {
-  var main = document.querySelector('.main');
-  var nav  = document.querySelector('.sidebar');
-  if (main) main.style.visibility = '';
-  if (nav)  nav.style.visibility  = '';
-  _origInit();
-};
 
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  NEW FEATURE 1 — INTERVAL & LONG-TERM HABITS SYSTEM                ║
@@ -3430,5 +3312,147 @@ renderAll = function() {
   nebulaBadgeUpdate();
 };
 </script>
+
+<!-- ===== NEBULA ACTIVATION SCRIPTS ===== -->
+<script src="nebula-activation.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── Auto-format input as NEBULA-XXXX-YYYY-ZZZZ ── */
+  var input = document.getElementById('nebActInput');
+  if (input) {
+    input.addEventListener('input', function () {
+      var raw = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+      // Build formatted string
+      var pre = 'NEBULA';
+      if (raw.startsWith(pre)) {
+        var rest = raw.slice(pre.length);
+        var segs = rest.match(/.{1,4}/g) || [];
+        this.value = pre + segs.slice(0, 3).map(function (s) { return '-' + s; }).join('');
+      } else {
+        this.value = raw;
+      }
+    });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') nebActSubmit();
+    });
+  }
+
+  /* ── Show / hide the overlay ── */
+  function nebActShow() {
+    var el = document.getElementById('nebActOverlay');
+    if (el) el.classList.remove('neb-hidden');
+  }
+  function nebActHide() {
+    var el = document.getElementById('nebActOverlay');
+    if (el) el.classList.add('neb-hidden');
+  }
+  window._nebActShow = nebActShow;
+  window._nebActHide = nebActHide;
+
+  /* ── Message helpers ── */
+  function nebActMsg(text, type) {
+    var el = document.getElementById('nebActMsg');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'neb-act-msg ' + (type || '');
+  }
+  function nebActLoading(on) {
+    var btn  = document.getElementById('nebActBtn');
+    var spin = document.getElementById('nebActSpinner');
+    var icon = document.getElementById('nebActBtnIcon');
+    var txt  = document.getElementById('nebActBtnText');
+    if (!btn) return;
+    btn.disabled = on;
+    if (spin) spin.style.display = on ? 'block' : 'none';
+    if (icon) icon.style.display = on ? 'none' : 'inline';
+    if (txt)  txt.textContent    = on ? 'Verifying…' : 'Activate';
+  }
+
+  /* ── Submit handler (called by onclick on the button) ── */
+  window.nebActSubmit = function () {
+    var key = ((document.getElementById('nebActInput') || {}).value || '').trim();
+    nebActMsg('');
+
+    if (!key) {
+      nebActMsg('Please enter your license key.', 'error');
+      return;
+    }
+    if (!/^NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) {
+      nebActMsg('Invalid key format. Expected: NEBULA-XXXX-YYYY-ZZZZ', 'error');
+      return;
+    }
+
+    if (!window.NebulaActivation) {
+      nebActMsg('Activation module not loaded. Please refresh the page.', 'error');
+      return;
+    }
+
+    nebActLoading(true);
+
+    /* nebula-activation.js exposes NebulaActivation.activate(key) → Promise */
+    window.NebulaActivation.activate(key)
+      .then(function (result) {
+        nebActLoading(false);
+        if (result && result.success) {
+          nebActMsg('✓ Activated successfully! Welcome to Nebula.', 'success');
+          setTimeout(function () { nebActHide(); }, 1000);
+        } else {
+          var code = (result && result.error) ? result.error : 'activation_failed';
+          nebActMsg(_nebActErrMsg(code), 'error');
+        }
+      })
+      .catch(function (err) {
+        nebActLoading(false);
+        var code = (err && err.error) ? err.error : 'network_error';
+        nebActMsg(_nebActErrMsg(code), 'error');
+      });
+  };
+
+  /* ── Error code → human message ── */
+  function _nebActErrMsg(code) {
+    var msgs = {
+      'invalid_key_format':  'Invalid key format. Expected: NEBULA-XXXX-YYYY-ZZZZ',
+      'KEY_NOT_FOUND':       'License key not found. Please check and try again.',
+      'key_not_found':       'License key not found. Please check and try again.',
+      'KEY_REVOKED':         'This license key has been revoked. Contact support.',
+      'key_revoked':         'This license key has been revoked. Contact support.',
+      'KEY_ALREADY_USED':    'Device limit reached for this key.',
+      'max_devices':         'Device limit reached for this key.',
+      'key_expired':         'This license key has expired.',
+      'network_error':       'Could not reach the activation server. Check your connection.',
+      'server_error':        'Server error. Please try again in a moment.',
+      'activation_failed':   'Activation failed. Please check your key and try again.'
+    };
+    return msgs[code] || ('Activation error: ' + code);
+  }
+
+  /* ── Boot: check activation status on page load ── */
+  function boot() {
+    if (!window.NebulaActivation) {
+      // Script not ready yet — wait for load event
+      window.addEventListener('load', boot);
+      return;
+    }
+    window.NebulaActivation.checkActivation()
+      .then(function (result) {
+        if (result && result.activated) {
+          nebActHide();   // already activated — keep app visible
+        } else {
+          nebActShow();   // show gate
+        }
+      })
+      .catch(function () {
+        nebActShow();     // fail-open: show gate on error
+      });
+  }
+
+  // Run immediately — NebulaActivation may already be defined
+  boot();
+})();
+</script>
+<!-- ===== END ACTIVATION SCRIPTS ===== -->
+
 </body>
 </html>
