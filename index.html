@@ -785,125 +785,254 @@ html[dir="ltr"] .toast { right:28px; }
 }
 .notif-dismiss-btn:hover { color: var(--text-secondary); }
 
-/* ===== NEBULA LICENSE ACTIVATION OVERLAY ===== */
-.neb-act-overlay {
+/* ===== NEBULA ACTIVATION OVERLAY ===== */
+#nebula-activation-overlay {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(11,15,23,0.97);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
-  display: -webkit-flex; display: flex;
-  -webkit-align-items: center; align-items: center;
-  -webkit-justify-content: center; justify-content: center;
+  background: var(--bg-deep);
+  display: flex; align-items: center; justify-content: center;
   padding: 20px;
-  -webkit-animation: fadeUp 0.35s ease; animation: fadeUp 0.35s ease;
+  animation: fadeUp 0.4s ease;
 }
-.neb-act-overlay.neb-hidden { display: none !important; }
-.neb-act-card {
+#nebula-activation-overlay.hidden { display: none; }
+.act-modal {
   background: var(--bg-card);
-  border: 1px solid rgba(168,85,247,0.28);
+  border: 1px solid rgba(168,85,247,0.3);
   border-radius: var(--radius);
-  padding: 40px 36px 32px;
-  max-width: 420px; width: 100%;
+  padding: 40px 36px;
+  max-width: 440px; width: 100%;
   text-align: center;
-  box-shadow: 0 0 60px rgba(168,85,247,0.15), 0 0 0 1px rgba(168,85,247,0.08);
+  box-shadow: 0 0 60px rgba(168,85,247,0.18), 0 0 120px rgba(168,85,247,0.08);
   position: relative; overflow: hidden;
 }
-.neb-act-card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: -webkit-linear-gradient(90deg, var(--neon-purple), var(--neon-pink), var(--neon-purple));
-  background: linear-gradient(90deg, var(--neon-purple), var(--neon-pink), var(--neon-purple));
+.act-modal::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(244,114,182,0.04));
+  pointer-events: none;
 }
-.neb-act-logo {
-  width: 62px; height: 62px; border-radius: 18px;
-  background: -webkit-linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
+.act-logo {
+  width: 64px; height: 64px; border-radius: 20px;
   background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
-  display: -webkit-flex; display: flex;
-  -webkit-align-items: center; align-items: center;
-  -webkit-justify-content: center; justify-content: center;
-  margin: 0 auto 18px auto;
-  box-shadow: 0 0 28px var(--neon-purple-glow);
-  font-size: 24px; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px auto;
+  box-shadow: 0 0 30px var(--neon-purple-glow);
+  font-size: 26px;
 }
-.neb-act-title {
-  font-size: 20px; font-weight: 800; letter-spacing: -0.3px;
-  color: var(--text-primary); margin-bottom: 6px;
+.act-title { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 6px; }
+.act-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 28px; line-height: 1.6; }
+.act-input {
+  width: 100%; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 18px; color: var(--text-primary);
+  font-family: inherit; font-size: 15px; outline: none; text-align: center; letter-spacing: 1px;
+  transition: border-color 0.25s, box-shadow 0.25s; margin-bottom: 14px; text-transform: uppercase;
 }
-.neb-act-subtitle {
-  font-size: 13px; color: var(--text-secondary);
-  line-height: 1.6; margin-bottom: 26px;
-}
-.neb-act-input {
-  width: 100%; box-sizing: border-box;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 13px 16px;
-  color: var(--text-primary); font-family: inherit; font-size: 14px;
-  text-align: center; letter-spacing: 2px; text-transform: uppercase;
-  outline: none;
-  -webkit-transition: border-color var(--transition), box-shadow var(--transition);
-  transition: border-color var(--transition), box-shadow var(--transition);
-  margin-bottom: 12px;
-  display: block;
-}
-.neb-act-input:focus {
-  border-color: var(--neon-purple);
-  box-shadow: 0 0 0 3px rgba(168,85,247,0.18);
-}
-.neb-act-input::placeholder { color: var(--text-muted); letter-spacing: 1px; text-transform: none; }
-.neb-act-btn {
-  width: 100%; padding: 13px 20px;
-  border-radius: var(--radius-sm); border: none;
-  background: -webkit-linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
+.act-input:focus { border-color: var(--neon-purple); box-shadow: 0 0 16px var(--neon-purple-glow); }
+.act-input::placeholder { color: var(--text-muted); letter-spacing: 1px; text-transform: none; }
+.act-btn {
+  width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
   background: linear-gradient(135deg, var(--neon-purple), var(--neon-pink));
   color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
-  cursor: pointer; letter-spacing: 0.3px;
-  -webkit-transition: all var(--transition); transition: all var(--transition);
+  cursor: pointer; letter-spacing: 0.3px; transition: all var(--transition);
   box-shadow: 0 4px 20px var(--neon-purple-glow);
-  display: -webkit-flex; display: flex;
-  -webkit-align-items: center; align-items: center;
-  -webkit-justify-content: center; justify-content: center;
-  gap: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.neb-act-btn:hover:not(:disabled) {
-  -webkit-transform: translateY(-2px); transform: translateY(-2px);
-  box-shadow: 0 8px 30px var(--neon-purple-glow);
+.act-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px var(--neon-purple-glow); }
+.act-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.act-error {
+  font-size: 12px; color: var(--neon-red); background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 8px 14px;
+  margin-top: 12px; display: none;
 }
-.neb-act-btn:disabled { opacity: 0.55; cursor: not-allowed; -webkit-transform: none; transform: none; }
-.neb-act-spinner {
-  width: 15px; height: 15px;
+.act-error.show { display: block; }
+.act-success {
+  font-size: 12px; color: var(--neon-green); background: rgba(52,211,153,0.08);
+  border: 1px solid rgba(52,211,153,0.2); border-radius: 8px; padding: 8px 14px;
+  margin-top: 12px; display: none;
+}
+.act-success.show { display: block; }
+.act-footer { font-size: 11px; color: var(--text-muted); margin-top: 18px; line-height: 1.6; }
+.act-spinner {
+  display: none; width: 16px; height: 16px;
   border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
-  border-radius: 50%;
-  -webkit-animation: nebActSpin 0.65s linear infinite;
-  animation: nebActSpin 0.65s linear infinite;
-  display: none;
+  border-radius: 50%; animation: actSpin 0.6s linear infinite;
 }
-@-webkit-keyframes nebActSpin { to { -webkit-transform: rotate(360deg); transform: rotate(360deg); } }
-@keyframes nebActSpin { to { transform: rotate(360deg); } }
-.neb-act-msg {
-  font-size: 12px; border-radius: 8px; padding: 8px 14px;
-  margin-top: 12px; display: none; line-height: 1.5;
+@keyframes actSpin { to { transform: rotate(360deg); } }
+.act-offline-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px;
+  color: var(--neon-amber); font-weight: 600;
+  background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 8px; padding: 4px 10px; margin-bottom: 18px;
 }
-.neb-act-msg.error {
-  display: block;
-  color: var(--neon-red);
-  background: rgba(239,68,68,0.09);
-  border: 1px solid rgba(239,68,68,0.22);
-}
-.neb-act-msg.success {
-  display: block;
-  color: var(--neon-green);
-  background: rgba(52,211,153,0.09);
-  border: 1px solid rgba(52,211,153,0.22);
-}
-.neb-act-footer {
-  font-size: 11px; color: var(--text-muted);
-  margin-top: 18px; line-height: 1.6;
-}
-/* ===== END ACTIVATION OVERLAY ===== */
+
 </style>
 </head>
 <body>
+
+<!-- ===== NEBULA ACTIVATION OVERLAY ===== -->
+<div id="nebula-activation-overlay">
+  <div class="act-modal">
+    <div class="act-logo"><i class="fas fa-infinity"></i></div>
+    <div class="act-title">Activate Nebula</div>
+    <div class="act-subtitle" id="actSubtitle">
+      Enter your license key to unlock all features.<br>
+      <span id="actOfflineBadge" class="act-offline-badge" style="display:none; margin-top:10px;">
+        <i class="fas fa-wifi-slash"></i> Offline Mode
+      </span>
+    </div>
+    <input
+      type="text"
+      class="act-input"
+      id="actKeyInput"
+      placeholder="NEBULA-XXXX-YYYY-ZZZZ"
+      maxlength="22"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button class="act-btn" id="actSubmitBtn" onclick="nebulaActivationSubmit()">
+      <span class="act-spinner" id="actSpinner"></span>
+      <span id="actBtnText"><i class="fas fa-key"></i> Activate</span>
+    </button>
+    <div class="act-error" id="actError"></div>
+    <div class="act-success" id="actSuccess"></div>
+    <div class="act-footer">
+      Your device fingerprint is hashed locally and never stored in plain text.<br>
+      Need a key? Contact your Nebula provider.
+    </div>
+  </div>
+</div>
+
+<script src="Nebula-activation.js"></script>
+<script>
+// ===== NEBULA ACTIVATION BOOT =====
+(function() {
+  var lang = document.documentElement.lang || 'en';
+
+  // Auto-format key input as user types
+  var input = document.getElementById('actKeyInput');
+  if (input) {
+    input.addEventListener('input', function() {
+      var val = this.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+      var parts = [];
+      // Prefix NEBULA (6 chars) is fixed
+      if (val.length > 0) {
+        // Build formatted string
+        var formatted = '';
+        if (val.startsWith('NEBULA')) {
+          formatted = 'NEBULA';
+          val = val.slice(6);
+          var segments = val.match(/.{1,4}/g) || [];
+          for (var i = 0; i < Math.min(segments.length, 3); i++) {
+            formatted += '-' + segments[i];
+          }
+        } else {
+          formatted = val;
+        }
+        this.value = formatted;
+      }
+    });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') nebulaActivationSubmit();
+    });
+  }
+
+  // Check on startup
+  if (window.NebulaActivation) {
+    NebulaActivation.checkActivation().then(function(result) {
+      if (result.activated) {
+        _nebulaHideOverlay();
+      } else {
+        _nebulaShowOverlay(result.reason);
+      }
+    }).catch(function() {
+      _nebulaShowOverlay('error');
+    });
+  } else {
+    // Script not loaded yet — wait
+    window.addEventListener('load', function() {
+      if (window.NebulaActivation) {
+        NebulaActivation.checkActivation().then(function(result) {
+          if (result.activated) _nebulaHideOverlay();
+          else _nebulaShowOverlay(result.reason);
+        });
+      }
+    });
+  }
+
+  window._nebulaHideOverlay = function() {
+    var overlay = document.getElementById('nebula-activation-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  };
+
+  window._nebulaShowOverlay = function(reason) {
+    var overlay = document.getElementById('nebula-activation-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+    if (reason === 'network_error' || reason === 'no_token') {
+      var badge = document.getElementById('actOfflineBadge');
+      if (badge && !navigator.onLine) badge.style.display = 'inline-flex';
+    }
+    if (reason && reason !== 'no_token') {
+      var msg = window.NebulaActivation
+        ? NebulaActivation.getErrorMessage(reason, lang)
+        : reason;
+      _nebulaShowError(msg);
+    }
+  };
+
+  window._nebulaShowError = function(msg) {
+    var el = document.getElementById('actError');
+    if (el) { el.textContent = msg; el.classList.add('show'); }
+    var succ = document.getElementById('actSuccess');
+    if (succ) succ.classList.remove('show');
+  };
+
+  window._nebulaShowSuccess = function(msg) {
+    var el = document.getElementById('actSuccess');
+    if (el) { el.textContent = msg; el.classList.add('show'); }
+    var err = document.getElementById('actError');
+    if (err) err.classList.remove('show');
+  };
+
+  window.nebulaActivationSubmit = function() {
+    var key    = (document.getElementById('actKeyInput') || {}).value || '';
+    var btn    = document.getElementById('actSubmitBtn');
+    var spin   = document.getElementById('actSpinner');
+    var btnTxt = document.getElementById('actBtnText');
+    var errEl  = document.getElementById('actError');
+
+    if (errEl) errEl.classList.remove('show');
+
+    if (!window.NebulaActivation) {
+      _nebulaShowError('Activation module not loaded. Please refresh.');
+      return;
+    }
+
+    // Loading state
+    if (btn)    btn.disabled = true;
+    if (spin)   spin.style.display = 'inline-block';
+    if (btnTxt) btnTxt.innerHTML = ' Verifying…';
+
+    var reset = function() {
+      if (btn)    btn.disabled = false;
+      if (spin)   spin.style.display = 'none';
+      if (btnTxt) btnTxt.innerHTML = '<i class="fas fa-key"></i> Activate';
+    };
+
+    NebulaActivation.activateLicense(
+      key,
+      function(data) {
+        reset();
+        _nebulaShowSuccess('✓ Activated! Plan: ' + (data.plan || 'pro'));
+        setTimeout(function() { _nebulaHideOverlay(); }, 1200);
+      },
+      function(err) {
+        reset();
+        var msg = NebulaActivation.getErrorMessage(err.error || 'activation_failed', lang);
+        _nebulaShowError(msg);
+      }
+    );
+  };
+})();
+</script>
+
 
 <nav class="sidebar" id="sidebar">
   <div class="logo-wrap" onclick="toggleSidebar()" title="Toggle Sidebar"><i class="fas fa-infinity"></i></div>
@@ -1264,40 +1393,6 @@ html[dir="ltr"] .toast { right:28px; }
     </div>
   </div>
 </div>
-
-
-<!-- ===== NEBULA LICENSE ACTIVATION OVERLAY ===== -->
-<div class="neb-act-overlay neb-hidden" id="nebActOverlay" role="dialog" aria-modal="true" aria-labelledby="nebActTitle">
-  <div class="neb-act-card">
-    <div class="neb-act-logo"><i class="fas fa-infinity"></i></div>
-    <div class="neb-act-title" id="nebActTitle">Activate Nebula</div>
-    <div class="neb-act-subtitle">
-      Enter your license key to unlock full access.<br>
-      Your data stays private — the key is verified securely online.
-    </div>
-    <input
-      type="text"
-      class="neb-act-input"
-      id="nebActInput"
-      placeholder="NEBULA-XXXX-YYYY-ZZZZ"
-      maxlength="22"
-      autocomplete="off"
-      spellcheck="false"
-      inputmode="text"
-    />
-    <button class="neb-act-btn" id="nebActBtn" onclick="nebActSubmit()">
-      <span class="neb-act-spinner" id="nebActSpinner"></span>
-      <i class="fas fa-key" id="nebActBtnIcon"></i>
-      <span id="nebActBtnText">Activate</span>
-    </button>
-    <div class="neb-act-msg" id="nebActMsg"></div>
-    <div class="neb-act-footer">
-      Your device fingerprint is hashed locally and never stored in plain text.<br>
-      Need a key? Contact your Nebula provider.
-    </div>
-  </div>
-</div>
-<!-- ===== END ACTIVATION OVERLAY ===== -->
 
 <div class="toast" id="toast"><i class="fas fa-check-circle"></i><span id="toastMsg">Saved</span></div>
 
@@ -3312,147 +3407,5 @@ renderAll = function() {
   nebulaBadgeUpdate();
 };
 </script>
-
-<!-- ===== NEBULA ACTIVATION SCRIPTS ===== -->
-<script src="nebula-activation.js"></script>
-<script>
-(function () {
-  'use strict';
-
-  /* ── Auto-format input as NEBULA-XXXX-YYYY-ZZZZ ── */
-  var input = document.getElementById('nebActInput');
-  if (input) {
-    input.addEventListener('input', function () {
-      var raw = this.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-      // Build formatted string
-      var pre = 'NEBULA';
-      if (raw.startsWith(pre)) {
-        var rest = raw.slice(pre.length);
-        var segs = rest.match(/.{1,4}/g) || [];
-        this.value = pre + segs.slice(0, 3).map(function (s) { return '-' + s; }).join('');
-      } else {
-        this.value = raw;
-      }
-    });
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') nebActSubmit();
-    });
-  }
-
-  /* ── Show / hide the overlay ── */
-  function nebActShow() {
-    var el = document.getElementById('nebActOverlay');
-    if (el) el.classList.remove('neb-hidden');
-  }
-  function nebActHide() {
-    var el = document.getElementById('nebActOverlay');
-    if (el) el.classList.add('neb-hidden');
-  }
-  window._nebActShow = nebActShow;
-  window._nebActHide = nebActHide;
-
-  /* ── Message helpers ── */
-  function nebActMsg(text, type) {
-    var el = document.getElementById('nebActMsg');
-    if (!el) return;
-    el.textContent = text;
-    el.className = 'neb-act-msg ' + (type || '');
-  }
-  function nebActLoading(on) {
-    var btn  = document.getElementById('nebActBtn');
-    var spin = document.getElementById('nebActSpinner');
-    var icon = document.getElementById('nebActBtnIcon');
-    var txt  = document.getElementById('nebActBtnText');
-    if (!btn) return;
-    btn.disabled = on;
-    if (spin) spin.style.display = on ? 'block' : 'none';
-    if (icon) icon.style.display = on ? 'none' : 'inline';
-    if (txt)  txt.textContent    = on ? 'Verifying…' : 'Activate';
-  }
-
-  /* ── Submit handler (called by onclick on the button) ── */
-  window.nebActSubmit = function () {
-    var key = ((document.getElementById('nebActInput') || {}).value || '').trim();
-    nebActMsg('');
-
-    if (!key) {
-      nebActMsg('Please enter your license key.', 'error');
-      return;
-    }
-    if (!/^NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) {
-      nebActMsg('Invalid key format. Expected: NEBULA-XXXX-YYYY-ZZZZ', 'error');
-      return;
-    }
-
-    if (!window.NebulaActivation) {
-      nebActMsg('Activation module not loaded. Please refresh the page.', 'error');
-      return;
-    }
-
-    nebActLoading(true);
-
-    /* nebula-activation.js exposes NebulaActivation.activate(key) → Promise */
-    window.NebulaActivation.activate(key)
-      .then(function (result) {
-        nebActLoading(false);
-        if (result && result.success) {
-          nebActMsg('✓ Activated successfully! Welcome to Nebula.', 'success');
-          setTimeout(function () { nebActHide(); }, 1000);
-        } else {
-          var code = (result && result.error) ? result.error : 'activation_failed';
-          nebActMsg(_nebActErrMsg(code), 'error');
-        }
-      })
-      .catch(function (err) {
-        nebActLoading(false);
-        var code = (err && err.error) ? err.error : 'network_error';
-        nebActMsg(_nebActErrMsg(code), 'error');
-      });
-  };
-
-  /* ── Error code → human message ── */
-  function _nebActErrMsg(code) {
-    var msgs = {
-      'invalid_key_format':  'Invalid key format. Expected: NEBULA-XXXX-YYYY-ZZZZ',
-      'KEY_NOT_FOUND':       'License key not found. Please check and try again.',
-      'key_not_found':       'License key not found. Please check and try again.',
-      'KEY_REVOKED':         'This license key has been revoked. Contact support.',
-      'key_revoked':         'This license key has been revoked. Contact support.',
-      'KEY_ALREADY_USED':    'Device limit reached for this key.',
-      'max_devices':         'Device limit reached for this key.',
-      'key_expired':         'This license key has expired.',
-      'network_error':       'Could not reach the activation server. Check your connection.',
-      'server_error':        'Server error. Please try again in a moment.',
-      'activation_failed':   'Activation failed. Please check your key and try again.'
-    };
-    return msgs[code] || ('Activation error: ' + code);
-  }
-
-  /* ── Boot: check activation status on page load ── */
-  function boot() {
-    if (!window.NebulaActivation) {
-      // Script not ready yet — wait for load event
-      window.addEventListener('load', boot);
-      return;
-    }
-    window.NebulaActivation.checkActivation()
-      .then(function (result) {
-        if (result && result.activated) {
-          nebActHide();   // already activated — keep app visible
-        } else {
-          nebActShow();   // show gate
-        }
-      })
-      .catch(function () {
-        nebActShow();     // fail-open: show gate on error
-      });
-  }
-
-  // Run immediately — NebulaActivation may already be defined
-  boot();
-})();
-</script>
-<!-- ===== END ACTIVATION SCRIPTS ===== -->
-
 </body>
 </html>
