@@ -18,7 +18,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-'use strict';
+ 'use strict';
 
 // ─── All requires hoisted to module top-level (never inline) ─────────────────
 const jwt    = require('jsonwebtoken');
