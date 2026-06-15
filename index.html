@@ -3453,40 +3453,19 @@ function checkActivation() {
     alert("خطأ في الاتصال.");
   });
 }
-
 window.onload = function() {
-  var token = localStorage.getItem('nebula_access_token');
-  
-  if (token) {
-    // إرسال طلب للسيرفر للتأكد أن التوكن لا يزال صالحاً لهذا الجهاز
-    fetch('https://nepulahabits.vercel.app/api/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        action: 'revalidate', 
-        token: token, 
-        deviceFingerprint: 'abc123456' // نفس البصمة التي استخدمناها في التفعيل
-      })
-    })
-    .then(function(response) {
-      return response.json();
-    })
-    .then(function(data) {
-      if (data.valid) {
-        // إذا كان التوكن صحيحاً، افتح التطبيق
+    var token = localStorage.getItem('nebula_access_token');
+    
+    // تأكدنا كاين التوكين ولا لا
+    if (token) {
+        console.log("التوكين موجود، جاري التحقق...");
+        // نحيو رسالة الخطأ ونبينو الموقع
         document.getElementById('activationScreen').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
-      } else {
-        // إذا كان غير صالح، امسح التوكن وأبقِ شاشة التفعيل
-        localStorage.removeItem('nebula_access_token');
-        alert("Session expired. Please activate again.");
-      }
-    })
-    .catch(function(error) {
-      // في حال تعذر الاتصال، نترك المستخدم يحاول التفعيل مرة أخرى
-      console.log("Revalidation failed, please connect to internet.");
-    });
-  }
+    } else {
+        console.log("لا يوجد توكين، يرجى التفعيل.");
+        // خلو رسالة الخطأ تبان باش المستخدم يفعل
+    }
 };
 </script>
 </body>
