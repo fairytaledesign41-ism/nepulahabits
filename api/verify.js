@@ -34,13 +34,11 @@ const SUPABASE_URL         = (process.env.SUPABASE_URL         || '').trim().rep
 const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_KEY || '').trim();
 
 const JWT_ALGORITHM      = 'HS256';
-const JWT_EXPIRES_IN     = '30d';   // soft default; overridden by key.expires_at
+const JWT_EXPIRES_IN     = '30d';   // used for revalidate rotations; activate issues non-expiring tokens
 const MAX_PAYLOAD_BYTES  = 8192;
 
-// Accepted license key formats:
-//   NEBULA-XXXX-XXXX-XXXX  (3-segment with prefix — legacy/admin keys)
-//   XXXX-XXXX-XXXX-XXXX    (4-segment plain — what the frontend sends)
-const LICENSE_KEY_REGEX = /^(?:NEBULA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}|[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4})$/;
+// CHANGED: Accept any alphanumeric key between 10 and 64 characters (hyphens are stripped before this check).
+const LICENSE_KEY_REGEX = /^[A-Z0-9]{10,64}$/;
 
 // Only these origins receive permissive CORS headers
 const ALLOWED_ORIGINS = [
@@ -156,14 +154,19 @@ function json(res, status, headers, body) {
  * ────────────────
  * Body: { action, licenseKey, deviceFingerprint, appVersion? }
  *
- * 1. Validate key format
+ * 1. Strip hyphens from key, validate format
  * 2. Look up key in Supabase
- * 3. Check revocation / expiry / device limit
+ * 3. Check revocation / device limit (expires_at is intentionally ignored)
  * 4. Register device (if new)
- * 5. Sign and return JWT
+ * 5. Sign and return a non-expiring JWT
+ *
+ * DB columns used: key, plan, max_devices, revoked, activated_devices
+ * expires_at is fetched but deliberately ignored — keys are permanent until
+ * manually revoked via the `revoked` boolean in the database.
  */
 async function handleActivate(body, cors, res) {
-  var licenseKey        = ((body.licenseKey        || '') + '').trim().toUpperCase();
+  // CHANGED: strip hyphens before normalising and validating
+  var licenseKey        = ((body.licenseKey        || '') + '').trim().toUpperCase().replace(/-/g, '');
   var deviceFingerprint = ((body.deviceFingerprint || '') + '').trim().toLowerCase();
 
   if (!LICENSE_KEY_REGEX.test(licenseKey)) {
@@ -174,8 +177,10 @@ async function handleActivate(body, cors, res) {
   }
 
   // Fetch key record from Supabase
+  // Selecting only the columns we actually use; expires_at is omitted intentionally.
   var dbResult = await supabaseFetch(
-    '/rest/v1/license_keys?key=eq.' + encodeURIComponent(licenseKey) + '&select=*&limit=1'
+    '/rest/v1/license_keys?key=eq.' + encodeURIComponent(licenseKey) +
+    '&select=id,key,plan,max_devices,revoked,activated_devices&limit=1'
   );
 
   if (dbResult.error) {
@@ -193,9 +198,7 @@ async function handleActivate(body, cors, res) {
   if (keyRecord.revoked) {
     return json(res, 403, cors, { error: 'KEY_REVOKED' });
   }
-  if (keyRecord.expires_at && new Date(keyRecord.expires_at) < new Date()) {
-    return json(res, 403, cors, { error: 'KEY_EXPIRED' });
-  }
+  // CHANGED: expires_at check removed entirely — keys are treated as permanent.
 
   // Device management
   var activatedDevices        = Array.isArray(keyRecord.activated_devices)
@@ -223,26 +226,17 @@ async function handleActivate(body, cors, res) {
     }
   }
 
-  // Sign JWT
+  // CHANGED: Sign a non-expiring JWT — no expiresIn option, no expires_at TTL cap.
   var jwtPayload = {
-    sub:              licenseKey,
-    plan:             keyRecord.plan || 'pro',
+    sub:               licenseKey,
+    plan:              keyRecord.plan || 'pro',
     deviceFingerprint: deviceFingerprint,
-    jti:              crypto.randomBytes(16).toString('hex')
+    jti:               crypto.randomBytes(16).toString('hex')
   };
-
-  var jwtOpts = { expiresIn: JWT_EXPIRES_IN, algorithm: JWT_ALGORITHM };
-
-  if (keyRecord.expires_at) {
-    var hardExpiry = Math.floor(new Date(keyRecord.expires_at).getTime() / 1000);
-    var softExpiry = Math.floor(Date.now() / 1000) + 30 * 86400;
-    var ttl        = Math.min(hardExpiry, softExpiry) - Math.floor(Date.now() / 1000);
-    jwtOpts.expiresIn = ttl > 0 ? ttl : 1;
-  }
 
   var token;
   try {
-    token = jwt.sign(jwtPayload, JWT_SECRET, jwtOpts);
+    token = jwt.sign(jwtPayload, JWT_SECRET, { algorithm: JWT_ALGORITHM });
   } catch (e) {
     console.error('[Nebula:activate] JWT sign error:', e.message);
     return json(res, 500, cors, { error: 'TOKEN_SIGN_ERROR' });
