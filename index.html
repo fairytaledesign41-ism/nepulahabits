@@ -3423,32 +3423,34 @@ renderAll = function() {
 <script>
 function checkActivation() {
   var key = document.getElementById('actKeyInput').value;
-  
-  // هنا وضعنا البصمة التي تتطابق مع قاعدة البيانات
-  fetch('https://nepulahabits.vercel.app/api/verify.js', {
+  var dataToSend = { 
+    action: 'activate', 
+    licenseKey: key, 
+    deviceFingerprint: 'abc123456' 
+  };
+
+  fetch('https://nepulahabits.vercel.app/api/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      action: 'activate', 
-      licenseKey: key, 
-      deviceFingerprint: 'abc123456' 
-    })
+    body: JSON.stringify(dataToSend)
   })
   .then(function(response) {
+    if (response.status === 405) {
+      alert("خطأ: السيرفر يرفض الطلب (Method Not Allowed). تأكد أن رابط الـ API صحيح.");
+    }
     return response.json();
   })
   .then(function(data) {
     if (data.token) {
-      alert("Activation successful!");
       localStorage.setItem('nebula_access_token', data.token);
-      document.getElementById('activationScreen').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'block';
+      alert("Activation successful!");
+      location.reload();
     } else {
-      alert("Error: " + (data.error || "Activation failed"));
+      alert("Error: " + (data.error || "Unknown"));
     }
   })
   .catch(function(error) {
-    alert("Connection failed, please check your internet.");
+    alert("Connection Error.");
   });
 }
 
