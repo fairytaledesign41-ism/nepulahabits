@@ -3423,38 +3423,67 @@ renderAll = function() {
 <script>
 function checkActivation() {
   var key = document.getElementById('actKeyInput').value;
-  var payload = { 
-    action: 'activate', 
-    licenseKey: key, 
-    deviceFingerprint: 'nebulauser' // بصمة نظيفة متوافقة مع Regex السيرفر
-  };
-
+  
+  // هنا وضعنا البصمة التي تتطابق مع قاعدة البيانات
   fetch('https://nepulahabits.vercel.app/api/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ 
+      action: 'activate', 
+      licenseKey: key, 
+      deviceFingerprint: 'abc123456' 
+    })
   })
   .then(function(response) {
-    if (!response.ok) {
-       return response.json().then(data => { throw new Error(data.error || 'Server Error'); });
-    }
     return response.json();
   })
   .then(function(data) {
-    alert("Activation successful!");
-    localStorage.setItem('nebula_access_token', data.token);
-    location.reload(); // إعادة تحميل الصفحة لإظهار المحتوى
+    if (data.token) {
+      alert("Activation successful!");
+      localStorage.setItem('nebula_access_token', data.token);
+      document.getElementById('activationScreen').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+    } else {
+      alert("Error: " + (data.error || "Activation failed"));
+    }
   })
   .catch(function(error) {
-    alert("Error: " + error.message);
+    alert("Connection failed, please check your internet.");
   });
 }
 
 window.onload = function() {
   var token = localStorage.getItem('nebula_access_token');
+  
   if (token) {
-    document.getElementById('activationScreen').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'block';
+    // إرسال طلب للسيرفر للتأكد أن التوكن لا يزال صالحاً لهذا الجهاز
+    fetch('https://nepulahabits.vercel.app/api/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'revalidate', 
+        token: token, 
+        deviceFingerprint: 'abc123456' // نفس البصمة التي استخدمناها في التفعيل
+      })
+    })
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function(data) {
+      if (data.valid) {
+        // إذا كان التوكن صحيحاً، افتح التطبيق
+        document.getElementById('activationScreen').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+      } else {
+        // إذا كان غير صالح، امسح التوكن وأبقِ شاشة التفعيل
+        localStorage.removeItem('nebula_access_token');
+        alert("Session expired. Please activate again.");
+      }
+    })
+    .catch(function(error) {
+      // في حال تعذر الاتصال، نترك المستخدم يحاول التفعيل مرة أخرى
+      console.log("Revalidation failed, please connect to internet.");
+    });
   }
 };
 </script>
