@@ -3423,24 +3423,27 @@ renderAll = function() {
 <script>
 function checkActivation() {
   var key = document.getElementById('actKeyInput').value;
+  
   fetch('https://nepulahabits.vercel.app/api/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-   body: JSON.stringify({ action: 'activate', licenseKey: key, deviceFingerprint: 'nebulauser' })
+    // تم التعديل هنا: استخدام nebulauser بدون شرطة سفلية
+    body: JSON.stringify({ action: 'activate', licenseKey: key, deviceFingerprint: 'nebulauser' })
   })
   .then(function(response) {
     return response.json().then(function(data) {
       if (response.ok) {
+        alert("Activation successful!");
         localStorage.setItem('nebula_access_token', data.token);
         document.getElementById('activationScreen').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
       } else {
-        alert(data.error || data.message || 'Invalid license key. Please try again.');
+        alert("Error: " + (data.error || "Activation failed"));
       }
     });
   })
-  .catch(function(err) {
-    alert('Verification failed: ' + (err.message || err));
+  .catch(function(error) {
+    alert("Connection failed, please check your internet.");
   });
 }
 
