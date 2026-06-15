@@ -1,4 +1,7 @@
+const jwt = require('jsonwebtoken');
+const https = require('https');
+const crypto = require('crypto');
+
 module.exports = async function handler(req, res) {
-  // هذا الكود سيعيد ردًا بسيطًا جدًا ليخبرنا أن السيرفر يعمل
-  res.status(200).json({ status: "Vercel is alive and connected!" });
+  res.status(200).json({ status: "Libraries loaded successfully" });
 };
