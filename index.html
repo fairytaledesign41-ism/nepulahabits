@@ -3426,7 +3426,7 @@ function checkActivation() {
   fetch('https://nepulahabits.vercel.app/api/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'activate', licenseKey: key, deviceFingerprint: 'nebula_user' })
+   body: JSON.stringify({ action: 'activate', licenseKey: key, deviceFingerprint: 'nebulauser' })
   })
   .then(function(response) {
     return response.json().then(function(data) {
