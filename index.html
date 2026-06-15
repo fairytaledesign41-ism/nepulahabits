@@ -3425,7 +3425,7 @@ function checkActivation() {
   var key = document.getElementById('actKeyInput').value;
   
   // هنا وضعنا البصمة التي تتطابق مع قاعدة البيانات
-  fetch('https://nepulahabits.vercel.app/api/verify', {
+  fetch('https://nepulahabits.vercel.app/api/verify.js', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ 
