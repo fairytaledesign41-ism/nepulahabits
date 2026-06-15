@@ -3423,7 +3423,7 @@ renderAll = function() {
 <script>
 function checkActivation() {
   var key = document.getElementById('actKeyInput').value;
-  var dataToSend = { 
+  var payload = { 
     action: 'activate', 
     licenseKey: key, 
     deviceFingerprint: 'abc123456' 
@@ -3431,26 +3431,26 @@ function checkActivation() {
 
   fetch('https://nepulahabits.vercel.app/api/verify', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dataToSend)
+    headers: { 
+      'Content-Type': 'application/json' 
+    },
+    body: JSON.stringify(payload) // نستخدم JSON.stringify للتأكد 100% أن البيانات JSON
   })
   .then(function(response) {
-    if (response.status === 405) {
-      alert("خطأ: السيرفر يرفض الطلب (Method Not Allowed). تأكد أن رابط الـ API صحيح.");
-    }
     return response.json();
   })
   .then(function(data) {
+    console.log("رد السيرفر:", data); // هذا سيظهر في الـ Console الخاص بالمتصفح
     if (data.token) {
       localStorage.setItem('nebula_access_token', data.token);
-      alert("Activation successful!");
+      alert("تم التفعيل!");
       location.reload();
     } else {
-      alert("Error: " + (data.error || "Unknown"));
+      alert("خطأ من السيرفر: " + data.error);
     }
   })
   .catch(function(error) {
-    alert("Connection Error.");
+    alert("خطأ في الاتصال.");
   });
 }
 
