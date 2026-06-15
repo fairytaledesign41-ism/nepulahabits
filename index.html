@@ -3423,32 +3423,30 @@ renderAll = function() {
 <script>
 function checkActivation() {
   var key = document.getElementById('actKeyInput').value;
-  
-  // تأكد أن الرابط هو الرابط الصحيح لمشروعك على Vercel
+  var payload = { 
+    action: 'activate', 
+    licenseKey: key, 
+    deviceFingerprint: 'nebulauser' // بصمة نظيفة متوافقة مع Regex السيرفر
+  };
+
   fetch('https://nepulahabits.vercel.app/api/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-      action: 'activate', 
-      licenseKey: key, 
-      deviceFingerprint: 'nebulauser' 
-    })
+    body: JSON.stringify(payload)
   })
   .then(function(response) {
+    if (!response.ok) {
+       return response.json().then(data => { throw new Error(data.error || 'Server Error'); });
+    }
     return response.json();
   })
   .then(function(data) {
-    if (data.token) {
-      alert("Activation successful!");
-      localStorage.setItem('nebula_access_token', data.token);
-      document.getElementById('activationScreen').style.display = 'none';
-      document.getElementById('mainContent').style.display = 'block';
-    } else {
-      alert("Error: " + (data.error || "Unknown error"));
-    }
+    alert("Activation successful!");
+    localStorage.setItem('nebula_access_token', data.token);
+    location.reload(); // إعادة تحميل الصفحة لإظهار المحتوى
   })
   .catch(function(error) {
-    alert("Connection failed: " + error);
+    alert("Error: " + error.message);
   });
 }
 
