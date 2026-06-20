@@ -3526,7 +3526,7 @@ renderAll = function() {
           setLoading(false);
           return;
         }
-
+console.log("Supabase Update Result:", updateResult);
       } else if (devices.indexOf(deviceID) === -1) {
         /* Step 3: Prevention — key is already bound to a different device */
         showMsg('🔒 This key is already activated on another device!', 'error');
