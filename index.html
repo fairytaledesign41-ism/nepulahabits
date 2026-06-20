@@ -3419,8 +3419,12 @@ renderAll = function() {
 
   /* Device fingerprint for this browser/device.
      NOTE: this is a best-effort fingerprint, not a cryptographic identity —
-     see explanation below the code for what this protects against (and what it doesn't). */
-  const deviceID = navigator.userAgent + '|' + screen.width + 'x' + screen.height + '|' + navigator.language;
+     clearing storage, spoofing userAgent, or a different browser profile on
+     the same machine will all produce a "different" device. It deters casual
+     key-sharing; it is not tamper-proof. */
+  function getDeviceID() {
+    return navigator.userAgent + '|' + screen.width + 'x' + screen.height;
+  }
 
   /* ─────────────────────────────────────────────
      ③ DOM REFS
@@ -3484,11 +3488,12 @@ renderAll = function() {
     clearMsg();
 
     try {
-      /* Single atomic call: the Postgres function (see SQL below) does the
-         "does key exist → is device already known → is there room → append"
-         logic in ONE locked transaction server-side. This is what actually
-         prevents the race condition — two devices activating in the same
-         millisecond cannot both slip through a client-side length check. */
+      /* Single atomic RPC call — the Postgres function handles existence
+         check, device lookup, max_devices enforcement, and the write, all
+         inside one locked transaction. This is what prevents two devices
+         from both squeezing through a "is there room?" check at once. */
+      var deviceID = getDeviceID();
+
       var rpcResult = await _supabase.rpc(RPC_ACTIVATE, {
         p_key: licenseKey,
         p_device_id: deviceID
@@ -3502,33 +3507,39 @@ renderAll = function() {
         return;
       }
 
-      var outcome = rpcResult.data; // { status: 'not_found' | 'limit_reached' | 'ok', ... }
+      var status = rpcResult.data;
 
-      if (!outcome || outcome.status === 'not_found') {
-        showMsg('❌ Invalid or inactive license key.', 'error');
-        shakeInput();
-        setLoading(false);
-        return;
+      switch (status) {
+        case 'SUCCESS':
+        case 'ALREADY_ACTIVATED':
+          /* ✅ Device is authorized — either newly registered or recognized */
+          try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+
+          input.classList.remove('lic-error');
+          input.classList.add('lic-success');
+          showMsg('✅ Activated! Welcome to Nebula ✨', 'success');
+
+          setTimeout(hideOverlay, 900);
+          break;
+
+        case 'LIMIT_REACHED':
+          showMsg('🔒 Device limit reached for this license key.', 'error');
+          shakeInput();
+          setLoading(false);
+          break;
+
+        case 'NOT_FOUND':
+          showMsg('❌ Invalid or inactive license key.', 'error');
+          shakeInput();
+          setLoading(false);
+          break;
+
+        default:
+          console.error('[Nebula] Unexpected RPC status:', status);
+          showMsg('⚠️ Unexpected response from server. Please try again.', 'error');
+          shakeInput();
+          setLoading(false);
       }
-
-      if (outcome.status === 'limit_reached') {
-        showMsg('🔒 Device limit reached for this license key.', 'error');
-        shakeInput();
-        setLoading(false);
-        return;
-      }
-
-      /* outcome.status === 'ok' → device was already registered, or room existed
-         and it was just added. Either way, this device is now authorized. */
-
-      /* ✅ Valid key & device — save state and unlock app */
-      try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
-
-      input.classList.remove('lic-error');
-      input.classList.add('lic-success');
-      showMsg('✅ Activated! Welcome to Nebula ✨', 'success');
-
-      setTimeout(hideOverlay, 900);
 
     } catch (networkErr) {
       console.error('[Nebula] Network error:', networkErr);
