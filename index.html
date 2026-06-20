@@ -3413,6 +3413,10 @@ renderAll = function() {
   var TABLE        = 'license_keys';       // Supabase table
   var COL_KEY      = 'key';               // column: the license key string
   var COL_ACTIVE   = 'is_active';         // column: boolean active flag
+  var COL_ACTIVATED_DEVS = 'activated_devices'; // column: array of device fingerprints
+
+  /* Device fingerprint for this browser/device */
+  var deviceID = navigator.userAgent + navigator.platform;
 
   /* ─────────────────────────────────────────────
      ③ DOM REFS
@@ -3426,7 +3430,7 @@ renderAll = function() {
      ④ ALREADY ACTIVATED? → skip modal immediately
      ───────────────────────────────────────────── */
   try {
-    if (localStorage.getItem(LS_ACTIVATED) === 'activated') {
+    if (localStorage.getItem(LS_ACTIVATED) === 'true') {
       hideOverlay();
       return;
     }
@@ -3476,12 +3480,11 @@ renderAll = function() {
     clearMsg();
 
     try {
-      /* Query: does this key exist AND is it active? */
+      /* Step 1: Verification — does this key exist? */
       var result = await _supabase
         .from(TABLE)
-        .select(COL_KEY)
+        .select(COL_KEY + ',' + COL_ACTIVE + ',' + COL_ACTIVATED_DEVS)
         .eq(COL_KEY, licenseKey)
-
         .maybeSingle(); /* null = no match (not an error) */
 
       if (result.error) {
@@ -3499,8 +3502,42 @@ renderAll = function() {
         return;
       }
 
-      /* ✅ Valid key — save state and unlock app */
-      try { localStorage.setItem(LS_ACTIVATED, 'activated'); } catch (e) {}
+      var row = result.data;
+      var devices = row[COL_ACTIVATED_DEVS];
+
+      /* Normalize devices into an array regardless of how it's stored */
+      if (!devices) {
+        devices = [];
+      } else if (!Array.isArray(devices)) {
+        devices = [devices];
+      }
+
+      if (devices.length === 0) {
+        /* Step 2: Registration — first activation, bind this device to the key */
+        var updateResult = await _supabase
+          .from(TABLE)
+          .update({ activated_devices: [deviceID] })
+          .eq(COL_KEY, licenseKey);
+
+        if (updateResult.error) {
+          console.error('[Nebula] Supabase update error:', updateResult.error);
+          showMsg('❌ ' + (updateResult.error.message || 'Activation failed. Try again.'), 'error');
+          shakeInput();
+          setLoading(false);
+          return;
+        }
+
+      } else if (devices.indexOf(deviceID) === -1) {
+        /* Step 3: Prevention — key is already bound to a different device */
+        showMsg('❌ This key is already activated on another device.', 'error');
+        shakeInput();
+        setLoading(false);
+        return;
+      }
+      /* else: deviceID already present in devices — allow access, no DB write needed */
+
+      /* ✅ Valid key & device — save state and unlock app */
+      try { localStorage.setItem('nebula_activated', 'true'); } catch (e) {}
 
       input.classList.remove('lic-error');
       input.classList.add('lic-success');
