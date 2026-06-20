@@ -3422,9 +3422,18 @@ renderAll = function() {
      clearing storage, spoofing userAgent, or a different browser profile on
      the same machine will all produce a "different" device. It deters casual
      key-sharing; it is not tamper-proof. */
-  function getDeviceID() {
-    return navigator.userAgent + '|' + screen.width + 'x' + screen.height;
+ function getDeviceID() {
+  // نحاول جلب المعرف المخزن مسبقاً
+  let deviceId = localStorage.getItem('nebula_device_id');
+  
+  // إذا لم يكن موجوداً، نقوم بإنشاء واحد جديد وفريد
+  if (!deviceId) {
+    deviceId = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    localStorage.setItem('nebula_device_id', deviceId);
   }
+  
+  return deviceId;
+}
 
   /* ─────────────────────────────────────────────
      ③ DOM REFS
