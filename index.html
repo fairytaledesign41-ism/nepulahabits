@@ -3481,7 +3481,7 @@ renderAll = function() {
         .from(TABLE)
         .select(COL_KEY)
         .eq(COL_KEY, licenseKey)
-        .eq(COL_ACTIVE, true)
+
         .maybeSingle(); /* null = no match (not an error) */
 
       if (result.error) {
