@@ -3413,10 +3413,14 @@ renderAll = function() {
   var TABLE        = 'license_keys';       // Supabase table
   var COL_KEY      = 'key';               // column: the license key string
   var COL_ACTIVE   = 'is_active';         // column: boolean active flag
-  var COL_ACTIVATED_DEVS = 'activated_devices'; // column: array of device fingerprints
+  var COL_ACTIVATED_DEVS = 'activated_devices'; // column: jsonb array of device fingerprints
+  var COL_MAX_DEVICES    = 'max_devices';       // column: int, device limit for this key
+  var RPC_ACTIVATE       = 'activate_license_device'; // Postgres function (see SQL notes)
 
-  /* Device fingerprint for this browser/device */
-  const deviceID = navigator.userAgent + navigator.platform;
+  /* Device fingerprint for this browser/device.
+     NOTE: this is a best-effort fingerprint, not a cryptographic identity —
+     see explanation below the code for what this protects against (and what it doesn't). */
+  const deviceID = navigator.userAgent + '|' + screen.width + 'x' + screen.height + '|' + navigator.language;
 
   /* ─────────────────────────────────────────────
      ③ DOM REFS
@@ -3480,61 +3484,42 @@ renderAll = function() {
     clearMsg();
 
     try {
-      /* Step 1: Verification — does this key exist? */
-      var result = await _supabase
-        .from(TABLE)
-        .select(COL_KEY + ',' + COL_ACTIVE + ',' + COL_ACTIVATED_DEVS)
-        .eq(COL_KEY, licenseKey)
-        .maybeSingle(); /* null = no match (not an error) */
+      /* Single atomic call: the Postgres function (see SQL below) does the
+         "does key exist → is device already known → is there room → append"
+         logic in ONE locked transaction server-side. This is what actually
+         prevents the race condition — two devices activating in the same
+         millisecond cannot both slip through a client-side length check. */
+      var rpcResult = await _supabase.rpc(RPC_ACTIVATE, {
+        p_key: licenseKey,
+        p_device_id: deviceID
+      });
 
-      if (result.error) {
-        console.error('[Nebula] Supabase error:', result.error);
-        showMsg('❌ ' + (result.error.message || 'Verification failed. Try again.'), 'error');
+      if (rpcResult.error) {
+        console.error('[Nebula] Supabase RPC error:', rpcResult.error);
+        showMsg('❌ ' + (rpcResult.error.message || 'Verification failed. Try again.'), 'error');
         shakeInput();
         setLoading(false);
         return;
       }
 
-      if (!result.data) {
+      var outcome = rpcResult.data; // { status: 'not_found' | 'limit_reached' | 'ok', ... }
+
+      if (!outcome || outcome.status === 'not_found') {
         showMsg('❌ Invalid or inactive license key.', 'error');
         shakeInput();
         setLoading(false);
         return;
       }
 
-      var row = result.data;
-      var devices = row[COL_ACTIVATED_DEVS];
-
-      /* Normalize devices into an array regardless of how it's stored */
-      if (!devices) {
-        devices = [];
-      } else if (!Array.isArray(devices)) {
-        devices = [devices];
-      }
-
-      if (devices.length === 0) {
-        /* Step 2: Registration — first activation, bind this device to the key */
-        var updateResult = await _supabase
-          .from(TABLE)
-          .update({ activated_devices: [deviceID] })
-          .eq(COL_KEY, licenseKey);
-
-        if (updateResult.error) {
-          console.error('[Nebula] Supabase update error:', updateResult.error);
-          showMsg('❌ ' + (updateResult.error.message || 'Activation failed. Try again.'), 'error');
-          shakeInput();
-          setLoading(false);
-          return;
-        }
-console.log("Supabase Update Result:", updateResult);
-      } else if (devices.indexOf(deviceID) === -1) {
-        /* Step 3: Prevention — key is already bound to a different device */
-        showMsg('🔒 This key is already activated on another device!', 'error');
+      if (outcome.status === 'limit_reached') {
+        showMsg('🔒 Device limit reached for this license key.', 'error');
         shakeInput();
         setLoading(false);
         return;
       }
-      /* else: deviceID already present in devices — allow access, no DB write needed */
+
+      /* outcome.status === 'ok' → device was already registered, or room existed
+         and it was just added. Either way, this device is now authorized. */
 
       /* ✅ Valid key & device — save state and unlock app */
       try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
