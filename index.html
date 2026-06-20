@@ -3416,7 +3416,7 @@ renderAll = function() {
   var COL_ACTIVATED_DEVS = 'activated_devices'; // column: array of device fingerprints
 
   /* Device fingerprint for this browser/device */
-  var deviceID = navigator.userAgent + navigator.platform;
+  const deviceID = navigator.userAgent + navigator.platform;
 
   /* ─────────────────────────────────────────────
      ③ DOM REFS
@@ -3529,7 +3529,7 @@ renderAll = function() {
 
       } else if (devices.indexOf(deviceID) === -1) {
         /* Step 3: Prevention — key is already bound to a different device */
-        showMsg('❌ This key is already activated on another device.', 'error');
+        showMsg('🔒 This key is already activated on another device!', 'error');
         shakeInput();
         setLoading(false);
         return;
@@ -3537,7 +3537,7 @@ renderAll = function() {
       /* else: deviceID already present in devices — allow access, no DB write needed */
 
       /* ✅ Valid key & device — save state and unlock app */
-      try { localStorage.setItem('nebula_activated', 'true'); } catch (e) {}
+      try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
 
       input.classList.remove('lic-error');
       input.classList.add('lic-success');
