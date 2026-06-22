@@ -13,7 +13,7 @@
 //   skipWaiting in install + clients.claim in activate means every new Vercel
 //   deployment is activated immediately — users never need a hard refresh.
 
-const CACHE_NAME = 'nebula-v4-cache';
+const CACHE_NAME = 'nebula-v5-cache';
 
 // Critical shell — must succeed for SW to install (kept tiny on purpose)
 const SHELL_ASSETS = [
@@ -89,11 +89,13 @@ self.addEventListener('fetch', function(event) {
   // ── Strategy A: Navigation requests (HTML page loads) — Network-First ────
   // Always try the network first to get fresh HTML from Vercel.
   // Only fall back to the cached shell when completely offline.
+  // IMPORTANT: strip query parameters (e.g. ?key=...) when matching the cache
+  // so that personalised PWA launch URLs still resolve to the cached shell.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then(function(res) {
-          // Opportunistically refresh the cached shell entry
+          // Opportunistically refresh the cached shell entry (without ?key=)
           if (res && res.ok) {
             var clone = res.clone();
             caches.open(CACHE_NAME).then(function(c) { c.put(request, clone); });
@@ -101,8 +103,10 @@ self.addEventListener('fetch', function(event) {
           return res;
         })
         .catch(function() {
-          // Offline — serve the cached shell so the PWA still opens
-          return caches.match('./index.html');
+          // Offline — try exact URL first, then fall back to the bare shell
+          return caches.match(request).then(function(cached) {
+            return cached || caches.match('./index.html');
+          });
         })
     );
     return;
