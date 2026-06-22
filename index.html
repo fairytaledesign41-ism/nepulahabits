@@ -30,6 +30,31 @@
 <meta name="application-name" content="Nebula">
 <!-- Manifest inline via Data URI for full PWA standalone (hides browser bar) -->
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Nebula%20%E2%80%94%20Habit%20Tracker%22%2C%22short_name%22%3A%22Nebula%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22background_color%22%3A%22%230b0f17%22%2C%22theme_color%22%3A%22%230b0f17%22%2C%22lang%22%3A%22ar%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk%2BM9QDwADhgGAWjR9awAAAABJRU5ErkJggg%3D%3D%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
+<script>
+/* ── Dynamic PWA Manifest ───────────────────────────────────────────
+   If ?key= is present in the URL, rewrite the manifest's start_url
+   to include the key. This ensures the home screen icon always
+   launches with the license key — surviving any cache or cookie wipe.
+   ─────────────────────────────────────────────────────────────────── */
+(function () {
+  var key = '';
+  try { key = new URLSearchParams(window.location.search).get('key') || ''; } catch (e) {}
+  if (!key) return;
+  var startUrl = window.location.pathname + '?key=' + encodeURIComponent(key);
+  var manifest = {
+    name: 'Nebula \u2014 Habit Tracker', short_name: 'Nebula',
+    start_url: startUrl, display: 'standalone',
+    orientation: 'portrait-primary',
+    background_color: '#0b0f17', theme_color: '#0b0f17', lang: 'ar',
+    icons: [{ src: 'logo.png', sizes: '512x512', type: 'image/png' }]
+  };
+  try {
+    var blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+    var el = document.querySelector('link[rel="manifest"]');
+    if (el) el.href = URL.createObjectURL(blob);
+  } catch (e) { console.warn('[Nebula] Dynamic manifest failed:', e); }
+})();
+</script>
 
 <title id="pageTitle">Nebula — متتبع العادات الرقمي</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3432,6 +3457,20 @@ function getDeviceID() {
   return deviceId;
 }
 
+  /* ── Cookie helpers (offline-safe, survive localStorage wipes) ──────────
+     Cookies have a separate "Clear cookies" checkbox in browser settings —
+     most users only tick "Clear cache/cached files", leaving cookies intact.
+     A 365-day cookie is therefore the most durable client-side store we have. */
+  function setCookie(name, value, days) {
+    var expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = name + '=' + encodeURIComponent(value)
+      + '; expires=' + expires + '; path=/; SameSite=Lax';
+  }
+  function getCookie(name) {
+    var m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
   /* ─────────────────────────────────────────────
      ③ DOM REFS
      ───────────────────────────────────────────── */
@@ -3441,12 +3480,22 @@ function getDeviceID() {
   var msgEl   = document.getElementById('lic-msg');
 
   /* ─────────────────────────────────────────────
-     ④ THREE-TIER ACTIVATION CHECK
-     Priority: URL key  →  localStorage  →  modal
+     ④ FOUR-TIER ACTIVATION CHECK
+     Priority:  Cookie → URL key → localStorage → modal
+     ─────────────────────────────────────────────
+     Tier 0  Cookie        — instant, no network, survives cache clears,
+                             works fully offline.
+     Tier 1  ?key= in URL  — cache-proof (key lives in the bookmarked link),
+                             needs one online Supabase call.
+     Tier 2  localStorage  — fast path when storage is intact, no network.
+     Tier 2B localStorage  — key survived but flag was wiped, silent re-verify.
+     Tier 3  Nothing found — show the activation modal.
      ───────────────────────────────────────────── */
 
-  /* Helper: run a silent Supabase RPC and unlock/lock accordingly.
-     keySource: 'url' | 'storage' — used only for console logs.     */
+  /* ── Shared helper: silent Supabase RPC ─────────────────────────────────
+     Hides the overlay, fires the RPC, and either keeps it hidden (valid key)
+     or shows the modal and wipes storage (invalid/revoked key).
+     On a network error it fails open so offline users are never blocked.     */
   function silentVerify(keyToCheck, keySource) {
     if (overlay) overlay.classList.add('hidden');
 
@@ -3454,9 +3503,9 @@ function getDeviceID() {
     try { _sbCheck = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) {}
 
     if (!_sbCheck) {
-      /* Supabase unavailable — fail open so the user isn't blocked */
       console.warn('[Nebula] silentVerify: Supabase unavailable, failing open.');
       try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+      setCookie('nebula_license_key', keyToCheck, 365);
       return;
     }
 
@@ -3468,19 +3517,21 @@ function getDeviceID() {
       console.log('[Nebula] silentVerify (' + keySource + '):', s);
 
       if (s === 'SUCCESS' || s === 'ALREADY_ACTIVATED') {
-        /* ✅ Valid — persist both flags and keep the app open */
+        /* ✅ Valid — persist to localStorage AND cookie */
         try {
-          localStorage.setItem(LS_ACTIVATED,   'true');
-          localStorage.setItem(LS_LICENSE_KEY,  keyToCheck);
+          localStorage.setItem(LS_ACTIVATED,  'true');
+          localStorage.setItem(LS_LICENSE_KEY, keyToCheck);
         } catch (e) {}
+        setCookie('nebula_license_key', keyToCheck, 365);
         /* Overlay already hidden — nothing else to do */
 
       } else {
-        /* ❌ Invalid / revoked — wipe storage and show the modal */
+        /* ❌ Invalid / revoked — wipe everything and show the modal */
         try {
           localStorage.removeItem(LS_ACTIVATED);
           localStorage.removeItem(LS_LICENSE_KEY);
         } catch (e) {}
+        setCookie('nebula_license_key', '', -1); /* expire the cookie */
         if (overlay) {
           overlay.classList.remove('hidden');
           overlay.removeAttribute('aria-hidden');
@@ -3488,15 +3539,30 @@ function getDeviceID() {
         }
       }
     }).catch(function () {
-      /* Network error — fail open; will re-verify on next online visit */
+      /* Network error (offline) — fail open; re-verifies on next online visit */
       console.warn('[Nebula] silentVerify: network error, failing open.');
       try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+      setCookie('nebula_license_key', keyToCheck, 365); /* refresh for future offline visits */
     });
   }
 
-  /* ── TIER 1: URL parameter  ?key=XXXX-XXXX ──────────────────────
-     The key lives in the bookmarked URL so cache-clearing never
-     removes it. This is the primary, cache-proof activation method. */
+  /* ── TIER 0: Cookie ──────────────────────────────────────────────────────
+     Fastest path. Works completely offline. Survives cache clears because
+     "Clear cache" and "Clear cookies" are separate browser actions.          */
+  var _cookieKey = getCookie('nebula_license_key');
+  if (_cookieKey) {
+    hideOverlay();
+    /* Repopulate localStorage while we're here (may have been wiped)         */
+    try {
+      localStorage.setItem(LS_ACTIVATED,  'true');
+      localStorage.setItem(LS_LICENSE_KEY, _cookieKey);
+    } catch (e) {}
+    return;
+  }
+
+  /* ── TIER 1: URL parameter  ?key=XXXX-XXXX ──────────────────────────────
+     The key is baked into the bookmarked / home-screen link so it is always
+     available even after a full cache + cookie wipe.                          */
   var _urlKey = '';
   try {
     _urlKey = (new URLSearchParams(window.location.search)).get('key') || '';
@@ -3506,11 +3572,11 @@ function getDeviceID() {
   if (_urlKey) {
     console.log('[Nebula] URL key detected — running silent verify.');
     silentVerify(_urlKey, 'url');
-    return; /* Do not fall through */
+    return;
   }
 
-  /* ── TIER 2: localStorage flag (cache intact) ────────────────────
-     Fast path: storage wasn't cleared, skip any network call.      */
+  /* ── TIER 2: localStorage flag (storage intact) ─────────────────────────
+     Fast path when the user has not cleared their browser data.              */
   try {
     if (localStorage.getItem(LS_ACTIVATED) === 'true') {
       hideOverlay();
@@ -3518,19 +3584,18 @@ function getDeviceID() {
     }
   } catch (e) {}
 
-  /* ── TIER 2-B: localStorage key (flag gone, key survived) ───────
-     Cache was partially cleared: flag wiped but key still present.
-     Re-verify silently without bothering the user.                  */
+  /* ── TIER 2-B: localStorage key (flag wiped, key survived) ─────────────
+     Partial clear: activated flag gone but the key is still there.           */
   var _savedKey = '';
   try { _savedKey = localStorage.getItem(LS_LICENSE_KEY) || ''; } catch (e) {}
 
   if (_savedKey) {
     console.log('[Nebula] Saved key found — running silent re-verify.');
     silentVerify(_savedKey, 'storage');
-    return; /* Do not fall through */
+    return;
   }
 
-  /* ── TIER 3: No key anywhere — show the activation modal ────────*/
+  /* ── TIER 3: Nothing found anywhere — show the activation modal ─────────*/
   if (overlay) overlay.classList.remove('hidden');
 
   /* ─────────────────────────────────────────────
@@ -3604,6 +3669,7 @@ function getDeviceID() {
             localStorage.setItem(LS_ACTIVATED, 'true');
             localStorage.setItem(LS_LICENSE_KEY, licenseKey); // persist key for silent re-verify
           } catch (e) {}
+          setCookie('nebula_license_key', licenseKey, 365); /* offline-safe backup */
 
           input.classList.remove('lic-error');
           input.classList.add('lic-success');
