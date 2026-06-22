@@ -28,31 +28,22 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b0f17">
 <meta name="application-name" content="Nebula">
-<!-- Manifest inline via Data URI for full PWA standalone (hides browser bar) -->
-<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Nebula%20%E2%80%94%20Habit%20Tracker%22%2C%22short_name%22%3A%22Nebula%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22background_color%22%3A%22%230b0f17%22%2C%22theme_color%22%3A%22%230b0f17%22%2C%22lang%22%3A%22ar%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk%2BM9QDwADhgGAWjR9awAAAABJRU5ErkJggg%3D%3D%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
+<!-- Real manifest.json file (must exist on GitHub alongside index.html) -->
+<link rel="manifest" href="./manifest.json">
 <script>
-/* ── Dynamic PWA Manifest ───────────────────────────────────────────
-   If ?key= is present in the URL, rewrite the manifest's start_url
-   to include the key. This ensures the home screen icon always
-   launches with the license key — surviving any cache or cookie wipe.
-   ─────────────────────────────────────────────────────────────────── */
+/* ── Session-bridge: carry ?key= across the SW cache boundary ──────────────
+   When the PWA launches from the home screen the SW serves the cached
+   index.html shell (no ?key= in the cached response).  We therefore write
+   the key into sessionStorage BEFORE the SW strips the URL, so the
+   activation logic can read it back from sessionStorage as Tier 0.5.
+   sessionStorage survives SW navigation but is wiped on full cache clears,
+   so it works as a short-term bridge; the cookie is the long-term store.    */
 (function () {
   var key = '';
   try { key = new URLSearchParams(window.location.search).get('key') || ''; } catch (e) {}
-  if (!key) return;
-  var startUrl = window.location.pathname + '?key=' + encodeURIComponent(key);
-  var manifest = {
-    name: 'Nebula \u2014 Habit Tracker', short_name: 'Nebula',
-    start_url: startUrl, display: 'standalone',
-    orientation: 'portrait-primary',
-    background_color: '#0b0f17', theme_color: '#0b0f17', lang: 'ar',
-    icons: [{ src: 'logo.png', sizes: '512x512', type: 'image/png' }]
-  };
-  try {
-    var blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-    var el = document.querySelector('link[rel="manifest"]');
-    if (el) el.href = URL.createObjectURL(blob);
-  } catch (e) { console.warn('[Nebula] Dynamic manifest failed:', e); }
+  if (key) {
+    try { sessionStorage.setItem('nebula_url_key', key.trim()); } catch (e) {}
+  }
 })();
 </script>
 
@@ -3552,7 +3543,6 @@ function getDeviceID() {
   var _cookieKey = getCookie('nebula_license_key');
   if (_cookieKey) {
     hideOverlay();
-    /* Repopulate localStorage while we're here (may have been wiped)         */
     try {
       localStorage.setItem(LS_ACTIVATED,  'true');
       localStorage.setItem(LS_LICENSE_KEY, _cookieKey);
@@ -3560,9 +3550,23 @@ function getDeviceID() {
     return;
   }
 
+  /* ── TIER 0.5: sessionStorage bridge ────────────────────────────────────
+     The ?key= script at the top of <head> wrote the key into sessionStorage
+     before the SW could strip it from the URL. This covers the case where
+     the PWA home-screen icon launches with ?key= in its start_url but the
+     SW serves the cached shell (which loses the query string).
+     sessionStorage is also wiped on cache clear, but on a fresh PWA launch
+     from the home screen it is always populated by the <head> script above. */
+  var _sessionKey = '';
+  try { _sessionKey = sessionStorage.getItem('nebula_url_key') || ''; } catch (e) {}
+  if (_sessionKey) {
+    console.log('[Nebula] sessionStorage key found — running silent verify.');
+    silentVerify(_sessionKey, 'session');
+    return;
+  }
+
   /* ── TIER 1: URL parameter  ?key=XXXX-XXXX ──────────────────────────────
-     The key is baked into the bookmarked / home-screen link so it is always
-     available even after a full cache + cookie wipe.                          */
+     Direct browser open with the full ?key= link (not via SW cache).        */
   var _urlKey = '';
   try {
     _urlKey = (new URLSearchParams(window.location.search)).get('key') || '';
