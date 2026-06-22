@@ -3409,7 +3409,8 @@ renderAll = function() {
   /* ─────────────────────────────────────────────
      ② CONSTANTS  (no need to edit below this line)
      ───────────────────────────────────────────── */
-  var LS_ACTIVATED = 'nebula_activated';   // localStorage flag
+  var LS_ACTIVATED   = 'nebula_activated';    // localStorage flag
+  var LS_LICENSE_KEY = 'nebula_license_key'; // localStorage: persisted license key for silent re-verify
   var TABLE        = 'license_keys';       // Supabase table
   var COL_KEY      = 'key';               // column: the license key string
   var COL_ACTIVE   = 'is_active';         // column: boolean active flag
@@ -3448,6 +3449,61 @@ function getDeviceID() {
       return;
     }
   } catch (e) { /* localStorage unavailable — continue to verification */ }
+
+  /* ─────────────────────────────────────────────
+     ④-B SILENT RE-VERIFY
+     If LS_ACTIVATED is gone (cache cleared) but LS_LICENSE_KEY still
+     exists, silently re-check the key against Supabase in the background.
+     The overlay stays hidden during the check; it only appears if the
+     key turns out to be invalid/revoked.
+     ───────────────────────────────────────────── */
+  var _savedKey = '';
+  try { _savedKey = localStorage.getItem(LS_LICENSE_KEY) || ''; } catch (e) {}
+
+  if (_savedKey) {
+    /* Keep overlay hidden — user sees the app immediately */
+    if (overlay) overlay.classList.add('hidden');
+
+    /* Init a dedicated Supabase client for the silent check.
+       We cannot reuse _supabase yet because it is defined below. */
+    var _sbSilent;
+    try { _sbSilent = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) {}
+
+    if (_sbSilent) {
+      _sbSilent.rpc(RPC_ACTIVATE, {
+        p_key:      _savedKey,
+        p_device_id: getDeviceID()
+      }).then(function (res) {
+        var s = res && res.data;
+        if (s === 'SUCCESS' || s === 'ALREADY_ACTIVATED') {
+          /* ✅ Key still valid — restore the flag silently */
+          try {
+            localStorage.setItem(LS_ACTIVATED,   'true');
+            localStorage.setItem(LS_LICENSE_KEY,  _savedKey);
+          } catch (e) {}
+          /* Overlay is already hidden — nothing else to do */
+        } else {
+          /* ❌ Key revoked / not found — clear storage and show modal */
+          try {
+            localStorage.removeItem(LS_ACTIVATED);
+            localStorage.removeItem(LS_LICENSE_KEY);
+          } catch (e) {}
+          if (overlay) {
+            overlay.classList.remove('hidden');
+            overlay.removeAttribute('aria-hidden');
+            overlay.style.pointerEvents = '';
+          }
+        }
+      }).catch(function () {
+        /* Network error during silent check — give benefit of the doubt:
+           keep the overlay hidden and restore the flag so the user is
+           not blocked offline. It will re-verify on next online visit. */
+        try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+      });
+    }
+
+    return; /* Do not fall through to the normal activation flow */
+  }
 
   /* Ensure overlay is visible (defensive; CSS already shows it) */
   if (overlay) overlay.classList.remove('hidden');
@@ -3518,7 +3574,10 @@ function getDeviceID() {
         case 'SUCCESS':
         case 'ALREADY_ACTIVATED':
           /* ✅ Device is authorized — either newly registered or recognized */
-          try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+          try {
+            localStorage.setItem(LS_ACTIVATED, 'true');
+            localStorage.setItem(LS_LICENSE_KEY, licenseKey); // persist key for silent re-verify
+          } catch (e) {}
 
           input.classList.remove('lic-error');
           input.classList.add('lic-success');
