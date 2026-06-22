@@ -30,36 +30,6 @@
 <meta name="application-name" content="Nebula">
 <!-- Manifest inline via Data URI for full PWA standalone (hides browser bar) -->
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Nebula%20%E2%80%94%20Habit%20Tracker%22%2C%22short_name%22%3A%22Nebula%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22orientation%22%3A%22portrait-primary%22%2C%22background_color%22%3A%22%230b0f17%22%2C%22theme_color%22%3A%22%230b0f17%22%2C%22lang%22%3A%22ar%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk%2BM9QDwADhgGAWjR9awAAAABJRU5ErkJggg%3D%3D%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D">
-<script>
-/* ── Dynamic PWA Manifest: bake ?key= into start_url so the home
-   screen icon always launches with the license key in the URL,
-   surviving any cache or cookie wipe. ── */
-(function () {
-  var key = '';
-  try { key = new URLSearchParams(window.location.search).get('key') || ''; } catch (e) {}
-  if (!key) return; /* No key in URL — leave the static manifest above untouched */
-
-  var startUrl = window.location.pathname + '?key=' + encodeURIComponent(key);
-  var manifest = {
-    name:             'Nebula \u2014 Habit Tracker',
-    short_name:       'Nebula',
-    start_url:        startUrl,
-    display:          'standalone',
-    orientation:      'portrait-primary',
-    background_color: '#0b0f17',
-    theme_color:      '#0b0f17',
-    lang:             'ar',
-    icons: [{ src: 'logo.png', sizes: '512x512', type: 'image/png' }]
-  };
-
-  try {
-    var blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-    var blobUrl = URL.createObjectURL(blob);
-    var el = document.querySelector('link[rel="manifest"]');
-    if (el) el.href = blobUrl;
-  } catch (e) { console.warn('[Nebula] Dynamic manifest failed:', e); }
-})();
-</script>
 
 <title id="pageTitle">Nebula — متتبع العادات الرقمي</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -3462,16 +3432,6 @@ function getDeviceID() {
   return deviceId;
 }
 
-  /* ── Cookie helpers (survive localStorage wipes, work offline) ── */
-  function setCookie(name, value, days) {
-    var expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + expires + '; path=/; SameSite=Lax';
-  }
-  function getCookie(name) {
-    var match = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
-    return match ? decodeURIComponent(match[1]) : '';
-  }
-
   /* ─────────────────────────────────────────────
      ③ DOM REFS
      ───────────────────────────────────────────── */
@@ -3481,22 +3441,9 @@ function getDeviceID() {
   var msgEl   = document.getElementById('lic-msg');
 
   /* ─────────────────────────────────────────────
-     ④ FOUR-TIER ACTIVATION CHECK
-     Priority: Cookie → URL key → localStorage → modal
+     ④ THREE-TIER ACTIVATION CHECK
+     Priority: URL key  →  localStorage  →  modal
      ───────────────────────────────────────────── */
-
-  /* ── TIER 0: Cookie — instant, offline-safe, survives cache clears ──
-     Set for 365 days on every successful activation. No network needed. */
-  var _cookieKey = getCookie('nebula_license_key');
-  if (_cookieKey) {
-    hideOverlay();
-    /* Repopulate localStorage while we're here (may have been wiped) */
-    try {
-      localStorage.setItem(LS_ACTIVATED,   'true');
-      localStorage.setItem(LS_LICENSE_KEY,  _cookieKey);
-    } catch (e) {}
-    return;
-  }
 
   /* Helper: run a silent Supabase RPC and unlock/lock accordingly.
      keySource: 'url' | 'storage' — used only for console logs.     */
@@ -3521,12 +3468,11 @@ function getDeviceID() {
       console.log('[Nebula] silentVerify (' + keySource + '):', s);
 
       if (s === 'SUCCESS' || s === 'ALREADY_ACTIVATED') {
-        /* ✅ Valid — persist to localStorage AND cookie (offline-safe) */
+        /* ✅ Valid — persist both flags and keep the app open */
         try {
-          localStorage.setItem(LS_ACTIVATED,  'true');
-          localStorage.setItem(LS_LICENSE_KEY, keyToCheck);
+          localStorage.setItem(LS_ACTIVATED,   'true');
+          localStorage.setItem(LS_LICENSE_KEY,  keyToCheck);
         } catch (e) {}
-        setCookie('nebula_license_key', keyToCheck, 365);
         /* Overlay already hidden — nothing else to do */
 
       } else {
@@ -3545,7 +3491,6 @@ function getDeviceID() {
       /* Network error — fail open; will re-verify on next online visit */
       console.warn('[Nebula] silentVerify: network error, failing open.');
       try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
-      setCookie('nebula_license_key', keyToCheck, 365); // refresh cookie for future offline visits
     });
   }
 
@@ -3659,7 +3604,6 @@ function getDeviceID() {
             localStorage.setItem(LS_ACTIVATED, 'true');
             localStorage.setItem(LS_LICENSE_KEY, licenseKey); // persist key for silent re-verify
           } catch (e) {}
-          setCookie('nebula_license_key', licenseKey, 365); // offline-safe backup
 
           input.classList.remove('lic-error');
           input.classList.add('lic-success');
