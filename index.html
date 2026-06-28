@@ -121,6 +121,7 @@ html[dir="ltr"] .sidebar .nav-item.active::before { content:''; position:absolut
   display:-webkit-flex; display:flex; -webkit-align-items:center; align-items:center;
   -webkit-justify-content:center; justify-content:center; font-weight:700; font-size:14px; cursor:pointer;
 }
+
 /* ===== MAIN ===== */
 .main { padding:32px 36px; -webkit-transition:margin var(--transition); transition:margin var(--transition); }
 html[dir="rtl"] .main { margin-right:72px; }
@@ -2194,6 +2195,7 @@ function hideResetConfirm(){
 }
 function doReset(){
   try {
+    // ── Habit/app data (cleared on reset) ──────────────────────────────
     _safeStorage.removeItem('nebula_habit_tracker_multi');
     _safeStorage.removeItem('nebula_lang');
     _safeStorage.removeItem('nebula_last_backup');
@@ -2203,6 +2205,10 @@ function doReset(){
     _safeStorage.removeItem('nebula_longTermHabits');
     _safeStorage.removeItem('nebula_notif_dismissed');
     _safeStorage.removeItem('nebula_notif_fired');
+    // ── License keys are intentionally NOT cleared on reset ─────────────
+    // nebula_activated, nebula_license_key, nebula_lic (cookie),
+    // nebula_device_id — these all persist so the user is not locked out
+    // after resetting their habit data.
   } catch(e){}
   hideResetConfirm();
   window.location.reload();
@@ -3376,24 +3382,26 @@ renderAll = function() {
 </script>
 
 <!-- ================================================================
-     NEBULA — LICENSE ACTIVATION SYSTEM
-     Powered by Supabase  |  GitHub Pages ready
-     ================================================================
+     NEBULA — LICENSE ACTIVATION SYSTEM  (v5 — Tiered Auth)
+     Powered by Supabase  |  GitHub Pages + PWA ready
 
-     ✅ SUPABASE_URL  →  already set to your project.
-     🔑 ACTION REQUIRED: paste your Anon Public key below.
-        Where to find it:
-        Supabase Dashboard → Settings → API → "anon public"
+     5-TIER ACTIVATION PRIORITY:
+       Tier 0    — Cookie            (survives cache clears)
+       Tier 0.5  — SW postMessage    (SW echoes ?key= back to page)
+       Tier 1    — URL ?key= param   (deep-link / shared URL)
+       Tier 2    — localStorage      (normal fast path)
+       Tier 3    — Supabase network  (first-time / fallback)
 
      TABLE SCHEMA (license_keys):
-       - id          uuid PRIMARY KEY DEFAULT gen_random_uuid()
-       - key         text UNIQUE NOT NULL
-       - is_active   boolean DEFAULT true
-       - activated_at timestamptz
+       - id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
+       - key             text UNIQUE NOT NULL
+       - is_active        boolean DEFAULT true
+       - activated_at    timestamptz
+       - activated_devices jsonb  (array of device-id strings)
+       - max_devices       int DEFAULT 3
 
-     RLS POLICY (allow anon SELECT on active keys):
-       CREATE POLICY "anon_read_active_keys" ON license_keys
-       FOR SELECT TO anon USING (is_active = true);
+     RPC: activate_license_device(p_key text, p_device_id text)
+       returns text: 'SUCCESS' | 'ALREADY_ACTIVATED' | 'LIMIT_REACHED' | 'NOT_FOUND'
      ================================================================ -->
 <script>
 (function () {
@@ -3403,36 +3411,74 @@ renderAll = function() {
      ① CONFIGURATION
      ───────────────────────────────────────────── */
   var SUPABASE_URL      = 'https://kyfxactugreavzuqidxq.supabase.co';
-  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5ZnhhY3R1Z3JlYXZ6dXFpZHhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMjA1MTIsImV4cCI6MjA5Njc5NjUxMn0.O8W3-jfRh4R-sMp1Q-MmnWCz693RfEX4TYqCD4Cvda0'; // ← replace this
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5ZnhhY3R1Z3JlYXZ6dXFpZHhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyMjA1MTIsImV4cCI6MjA5Njc5NjUxMn0.O8W3-jfRh4R-sMp1Q-MmnWCz693RfEX4TYqCD4Cvda0';
 
   /* ─────────────────────────────────────────────
-     ② CONSTANTS  (no need to edit below this line)
+     ② CONSTANTS
      ───────────────────────────────────────────── */
-  var LS_ACTIVATED   = 'nebula_activated';    // localStorage flag
-  var LS_LICENSE_KEY = 'nebula_license_key'; // localStorage: persisted license key for silent re-verify
-  var TABLE        = 'license_keys';       // Supabase table
-  var COL_KEY      = 'key';               // column: the license key string
-  var COL_ACTIVE   = 'is_active';         // column: boolean active flag
-  var COL_ACTIVATED_DEVS = 'activated_devices'; // column: jsonb array of device fingerprints
-  var COL_MAX_DEVICES    = 'max_devices';       // column: int, device limit for this key
-  var RPC_ACTIVATE       = 'activate_license_device'; // Postgres function (see SQL notes)
-
-  /* Device fingerprint for this browser/device.
-     NOTE: this is a best-effort fingerprint, not a cryptographic identity —
-     clearing storage, spoofing userAgent, or a different browser profile on
-     the same machine will all produce a "different" device. It deters casual
-     key-sharing; it is not tamper-proof. */
-function getDeviceID() {
-  let deviceId = localStorage.getItem('nebula_device_id');
-  if (!deviceId) {
-    deviceId = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    localStorage.setItem('nebula_device_id', deviceId);
-  }
-  return deviceId;
-}
+  var LS_ACTIVATED   = 'nebula_activated';
+  var LS_LICENSE_KEY = 'nebula_license_key';
+  var COOKIE_KEY     = 'nebula_lic';        // cookie name
+  var COOKIE_DAYS    = 365;                 // cookie lifetime
+  var TABLE          = 'license_keys';
+  var RPC_ACTIVATE   = 'activate_license_device';
 
   /* ─────────────────────────────────────────────
-     ③ DOM REFS
+     ③ COOKIE HELPERS  (Tier 0)
+        Cookies survive localStorage/cache clears
+     ───────────────────────────────────────────── */
+  function setCookie(name, value, days) {
+    try {
+      var expires = '';
+      if (days) {
+        var d = new Date();
+        d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+        expires = '; expires=' + d.toUTCString();
+      }
+      // SameSite=Strict; Secure is omitted intentionally — GitHub Pages
+      // serves HTTPS so the browser will send it, but omitting the flag
+      // keeps it compatible with localhost dev as well.
+      document.cookie = name + '=' + encodeURIComponent(value) + expires +
+                        '; path=/; SameSite=Strict';
+    } catch (e) {}
+  }
+
+  function getCookie(name) {
+    try {
+      var nameEQ = name + '=';
+      var parts  = document.cookie.split(';');
+      for (var i = 0; i < parts.length; i++) {
+        var c = parts[i].trim();
+        if (c.indexOf(nameEQ) === 0) {
+          return decodeURIComponent(c.substring(nameEQ.length));
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function deleteCookie(name) {
+    setCookie(name, '', -1);
+  }
+
+  /* ─────────────────────────────────────────────
+     ④ DEVICE ID  (stable per browser profile)
+     ───────────────────────────────────────────── */
+  function getDeviceID() {
+    try {
+      var id = localStorage.getItem('nebula_device_id');
+      if (!id) {
+        id = 'dev_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+        localStorage.setItem('nebula_device_id', id);
+      }
+      return id;
+    } catch (e) {
+      return 'dev_unknown_' + Date.now();
+    }
+  }
+
+  /* ─────────────────────────────────────────────
+     ⑤ DOM REFS
      ───────────────────────────────────────────── */
   var overlay = document.getElementById('nebula-license-overlay');
   var input   = document.getElementById('lic-key-input');
@@ -3440,26 +3486,65 @@ function getDeviceID() {
   var msgEl   = document.getElementById('lic-msg');
 
   /* ─────────────────────────────────────────────
-     ④ THREE-TIER ACTIVATION CHECK
-     Priority: URL key  →  localStorage  →  modal
+     ⑥ PERSIST ACTIVATION  (write all tiers)
+        Call this whenever we confirm a key is valid
      ───────────────────────────────────────────── */
+  function persistActivation(key) {
+    try { localStorage.setItem(LS_ACTIVATED,   'true'); }    catch (e) {}
+    try { localStorage.setItem(LS_LICENSE_KEY, key); }       catch (e) {}
+    try { sessionStorage.setItem(LS_LICENSE_KEY, key); }     catch (e) {}
+    setCookie(COOKIE_KEY, key, COOKIE_DAYS);
+  }
 
-  /* Helper: run a silent Supabase RPC and unlock/lock accordingly.
-     keySource: 'url' | 'storage' — used only for console logs.     */
+  /* ─────────────────────────────────────────────
+     ⑦ WIPE ACTIVATION  (on revoked key)
+     ───────────────────────────────────────────── */
+  function wipeActivation() {
+    try { localStorage.removeItem(LS_ACTIVATED); }    catch (e) {}
+    try { localStorage.removeItem(LS_LICENSE_KEY); }  catch (e) {}
+    try { sessionStorage.removeItem(LS_LICENSE_KEY); } catch (e) {}
+    deleteCookie(COOKIE_KEY);
+  }
+
+  /* ─────────────────────────────────────────────
+     ⑧ HIDE OVERLAY  (grant access)
+     ───────────────────────────────────────────── */
+  function hideOverlay() {
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.pointerEvents = 'none';
+  }
+
+  /* ─────────────────────────────────────────────
+     ⑨ SHOW OVERLAY  (revoke access)
+     ───────────────────────────────────────────── */
+  function showOverlay() {
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    overlay.removeAttribute('aria-hidden');
+    overlay.style.pointerEvents = '';
+  }
+
+  /* ─────────────────────────────────────────────
+     ⑩ SILENT VERIFY  (background network check)
+        keySource: 'cookie' | 'url' | 'session' | 'storage'
+     ───────────────────────────────────────────── */
   function silentVerify(keyToCheck, keySource) {
-    if (overlay) overlay.classList.add('hidden');
+    // Optimistically grant access immediately; revoke if network says no
+    hideOverlay();
 
-    var _sbCheck;
-    try { _sbCheck = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) {}
+    var _sb;
+    try { _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) {}
 
-    if (!_sbCheck) {
-      /* Supabase unavailable — fail open so the user isn't blocked */
-      console.warn('[Nebula] silentVerify: Supabase unavailable, failing open.');
-      try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+    if (!_sb) {
+      // Supabase unavailable (offline / CDN blocked) — fail open
+      console.warn('[Nebula] silentVerify: Supabase unavailable, failing open (' + keySource + ').');
+      persistActivation(keyToCheck);
       return;
     }
 
-    _sbCheck.rpc(RPC_ACTIVATE, {
+    _sb.rpc(RPC_ACTIVATE, {
       p_key:       keyToCheck,
       p_device_id: getDeviceID()
     }).then(function (res) {
@@ -3467,75 +3552,115 @@ function getDeviceID() {
       console.log('[Nebula] silentVerify (' + keySource + '):', s);
 
       if (s === 'SUCCESS' || s === 'ALREADY_ACTIVATED') {
-        /* ✅ Valid — persist both flags and keep the app open */
-        try {
-          localStorage.setItem(LS_ACTIVATED,   'true');
-          localStorage.setItem(LS_LICENSE_KEY,  keyToCheck);
-        } catch (e) {}
-        /* Overlay already hidden — nothing else to do */
-
+        persistActivation(keyToCheck);
       } else {
-        /* ❌ Invalid / revoked — wipe storage and show the modal */
-        try {
-          localStorage.removeItem(LS_ACTIVATED);
-          localStorage.removeItem(LS_LICENSE_KEY);
-        } catch (e) {}
-        if (overlay) {
-          overlay.classList.remove('hidden');
-          overlay.removeAttribute('aria-hidden');
-          overlay.style.pointerEvents = '';
-        }
+        // Key was revoked or invalid — remove everything and force re-entry
+        wipeActivation();
+        showOverlay();
       }
     }).catch(function () {
-      /* Network error — fail open; will re-verify on next online visit */
-      console.warn('[Nebula] silentVerify: network error, failing open.');
-      try { localStorage.setItem(LS_ACTIVATED, 'true'); } catch (e) {}
+      // Network error — fail open; will re-verify next time app opens online
+      console.warn('[Nebula] silentVerify: network error, failing open (' + keySource + ').');
+      persistActivation(keyToCheck);
     });
   }
 
-  /* ── TIER 1: URL parameter  ?key=XXXX-XXXX ──────────────────────
-     The key lives in the bookmarked URL so cache-clearing never
-     removes it. This is the primary, cache-proof activation method. */
+  /* ─────────────────────────────────────────────
+     ⑪ TIER 0 — COOKIE CHECK
+        Most resilient: cookies survive
+        localStorage clears and cache wipes.
+     ───────────────────────────────────────────── */
+  var _cookieKey = getCookie(COOKIE_KEY);
+  if (_cookieKey) {
+    console.log('[Nebula] Tier 0 (cookie) — silent verify.');
+    silentVerify(_cookieKey, 'cookie');
+    return;
+  }
+
+  /* ─────────────────────────────────────────────
+     ⑫ TIER 0.5 — SERVICE WORKER postMessage
+        The SW may have captured the ?key= param
+        from the navigation request and can echo it.
+        We set up the listener first, then ask.
+     ───────────────────────────────────────────── */
+  var _swKeyResolved = false; // flag so we don't double-run
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener('message', function onSwMsg(evt) {
+      if (!evt.data) return;
+      if (evt.data.type === 'SW_KEY_RESPONSE' || evt.data.type === 'SW_KEY_BROADCAST') {
+        var swKey = evt.data.key;
+        if (swKey && !_swKeyResolved) {
+          _swKeyResolved = true;
+          navigator.serviceWorker.removeEventListener('message', onSwMsg);
+          console.log('[Nebula] Tier 0.5 (SW message) — key received.');
+          // Also stash in sessionStorage as a bridge for subsequent checks
+          try { sessionStorage.setItem(LS_LICENSE_KEY, swKey); } catch (e) {}
+          silentVerify(swKey, 'sw_message');
+        }
+      }
+    });
+    // Ask the SW for any key it captured
+    navigator.serviceWorker.controller.postMessage({ type: 'GET_KEY_FROM_URL' });
+  }
+
+  /* ─────────────────────────────────────────────
+     ⑬ TIER 1 — URL ?key= PARAMETER
+        Deep-link activation. Key lives in the
+        bookmarked/shared URL — survives everything.
+     ───────────────────────────────────────────── */
   var _urlKey = '';
   try {
     _urlKey = (new URLSearchParams(window.location.search)).get('key') || '';
     _urlKey = _urlKey.trim();
   } catch (e) {}
 
-  if (_urlKey) {
-    console.log('[Nebula] URL key detected — running silent verify.');
+  if (_urlKey && !_swKeyResolved) {
+    console.log('[Nebula] Tier 1 (URL key) — silent verify.');
+    _swKeyResolved = true; // prevent SW listener from double-running
     silentVerify(_urlKey, 'url');
-    return; /* Do not fall through */
+    return;
   }
 
-  /* ── TIER 2: localStorage flag (cache intact) ────────────────────
-     Fast path: storage wasn't cleared, skip any network call.      */
+  /* ─────────────────────────────────────────────
+     ⑭ TIER 2 — localStorage  (normal fast path)
+     ───────────────────────────────────────────── */
+
+  // 2a: activated flag is present → no network call needed
   try {
     if (localStorage.getItem(LS_ACTIVATED) === 'true') {
       hideOverlay();
+      // Also ensure cookie is set in case it was missing
+      var _lsKey = '';
+      try { _lsKey = localStorage.getItem(LS_LICENSE_KEY) || ''; } catch (e) {}
+      if (_lsKey) setCookie(COOKIE_KEY, _lsKey, COOKIE_DAYS);
       return;
     }
   } catch (e) {}
 
-  /* ── TIER 2-B: localStorage key (flag gone, key survived) ───────
-     Cache was partially cleared: flag wiped but key still present.
-     Re-verify silently without bothering the user.                  */
+  // 2b: flag gone but key still present → silent re-verify
   var _savedKey = '';
   try { _savedKey = localStorage.getItem(LS_LICENSE_KEY) || ''; } catch (e) {}
-
-  if (_savedKey) {
-    console.log('[Nebula] Saved key found — running silent re-verify.');
-    silentVerify(_savedKey, 'storage');
-    return; /* Do not fall through */
+  if (!_savedKey) {
+    // Also check sessionStorage (Tier 0.5 bridge)
+    try { _savedKey = sessionStorage.getItem(LS_LICENSE_KEY) || ''; } catch (e) {}
   }
 
-  /* ── TIER 3: No key anywhere — show the activation modal ────────*/
-  if (overlay) overlay.classList.remove('hidden');
+  if (_savedKey && !_swKeyResolved) {
+    console.log('[Nebula] Tier 2 (localStorage/sessionStorage key) — silent re-verify.');
+    _swKeyResolved = true;
+    silentVerify(_savedKey, 'storage');
+    return;
+  }
 
   /* ─────────────────────────────────────────────
-     ⑤ INIT SUPABASE CLIENT
-        (only reached when the modal is shown)
+     ⑮ TIER 3 — No key anywhere → show modal
+        (Supabase client only initialised here)
      ───────────────────────────────────────────── */
+  if (!_swKeyResolved) {
+    showOverlay();
+  }
+
   var _supabase;
   try {
     _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -3545,9 +3670,7 @@ function getDeviceID() {
     return;
   }
 
-  /* ─────────────────────────────────────────────
-     ⑥ ENTER KEY SUPPORT
-     ───────────────────────────────────────────── */
+  /* Enter key support */
   if (input) {
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') { e.preventDefault(); nebulaActivate(); }
@@ -3555,14 +3678,12 @@ function getDeviceID() {
   }
 
   /* ─────────────────────────────────────────────
-     ⑦ MAIN ACTIVATION FUNCTION
-        Queries license_keys table in Supabase.
-        On success → saves 'activated' to localStorage.
+     ⑯ ACTIVATION FUNCTION (modal submit)
      ───────────────────────────────────────────── */
   window.nebulaActivate = async function () {
     if (!input || !btn) return;
 
-    var licenseKey = input.value.trim();
+    var licenseKey = input.value.trim().toUpperCase();
 
     if (!licenseKey || licenseKey.length < 6) {
       showMsg('Please enter a valid license key.', 'error');
@@ -3574,15 +3695,9 @@ function getDeviceID() {
     clearMsg();
 
     try {
-      /* Single atomic RPC call — the Postgres function handles existence
-         check, device lookup, max_devices enforcement, and the write, all
-         inside one locked transaction. This is what prevents two devices
-         from both squeezing through a "is there room?" check at once. */
-      var deviceID = getDeviceID();
-
       var rpcResult = await _supabase.rpc(RPC_ACTIVATE, {
-        p_key: licenseKey,
-        p_device_id: deviceID
+        p_key:       licenseKey,
+        p_device_id: getDeviceID()
       });
 
       if (rpcResult.error) {
@@ -3598,16 +3713,10 @@ function getDeviceID() {
       switch (status) {
         case 'SUCCESS':
         case 'ALREADY_ACTIVATED':
-          /* ✅ Device is authorized — either newly registered or recognized */
-          try {
-            localStorage.setItem(LS_ACTIVATED, 'true');
-            localStorage.setItem(LS_LICENSE_KEY, licenseKey); // persist key for silent re-verify
-          } catch (e) {}
-
+          persistActivation(licenseKey);
           input.classList.remove('lic-error');
           input.classList.add('lic-success');
           showMsg('✅ Activated! Welcome to Nebula ✨', 'success');
-
           setTimeout(hideOverlay, 900);
           break;
 
@@ -3625,7 +3734,7 @@ function getDeviceID() {
 
         default:
           console.error('[Nebula] Unexpected RPC status:', status);
-          showMsg('⚠️ Unexpected response from server. Please try again.', 'error');
+          showMsg('⚠️ Unexpected response. Please try again.', 'error');
           shakeInput();
           setLoading(false);
       }
@@ -3639,15 +3748,8 @@ function getDeviceID() {
   };
 
   /* ─────────────────────────────────────────────
-     ⑧ HELPERS
+     ⑰ UI HELPERS
      ───────────────────────────────────────────── */
-  function hideOverlay() {
-    if (!overlay) return;
-    overlay.classList.add('hidden');
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.style.pointerEvents = 'none';
-  }
-
   function setLoading(on) {
     if (!btn) return;
     btn.disabled = on;
@@ -3671,7 +3773,7 @@ function getDeviceID() {
   function shakeInput() {
     if (!input) return;
     input.classList.remove('lic-error', 'lic-success');
-    void input.offsetWidth; /* force reflow to re-trigger animation */
+    void input.offsetWidth;
     input.classList.add('lic-error');
   }
 
