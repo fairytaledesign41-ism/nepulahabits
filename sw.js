@@ -1,161 +1,214 @@
-/**
- * Nebula Service Worker  v2.0
- * ─────────────────────────────────────────────────────────────────────────
- * • Offline-first caching for app shell and assets
- * • Activation API requests are NEVER cached (always go to network)
- * • Token revalidation requests pass through with network-first strategy
- * • All other API calls: network-first with 5s timeout fallback to cache
- * ─────────────────────────────────────────────────────────────────────────
- */
+// ===== NEBULA SMART SERVICE WORKER (sw.js) =====
+// v5 — Tiered auth support: preserves ?key= query strings, posts license key
+//      to page via postMessage, offline-first for the app shell.
+//
+// Key changes vs v4:
+//   • Navigation requests: strips query string ONLY for cache lookup, but
+//     forwards the full original request to the network — so ?key= is never lost.
+//   • After serving a cached shell, SW reads the `key` param from the request
+//     URL and posts it back to the page client via postMessage so Tier 0.5 works.
+//   • Cache-busting: CACHE_NAME bumped to v5 so stale v4 entries are purged.
 
-var CACHE_NAME    = 'nebula-v2';
-var SHELL_CACHE   = 'nebula-shell-v2';
-var DYNAMIC_CACHE = 'nebula-dynamic-v2';
+var CACHE_NAME = 'nebula-v5-cache';
 
-/** Files to cache on install (app shell) */
+// Critical shell — must succeed for SW to install (kept tiny on purpose)
 var SHELL_ASSETS = [
   './',
-  './index.html',
-  './logo.png',
+  './index.html'
+];
+
+// CDN assets — cached lazily in the background so install is never blocked
+var CDN_ASSETS = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800&family=Cairo:wght@400;500;600;700;800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
-  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js'
+  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
 ];
 
-/** URLs that must NEVER be served from cache */
-var NEVER_CACHE_PATTERNS = [
-  /\/v1\/license\//,            // activation API
-  /\/v1\/license\/activate/,
-  /\/v1\/license\/revalidate/,
-  /\/v1\/license\/revoke-device/
-];
-
-/** Check if a URL matches any never-cache pattern */
-function isActivationRequest(url) {
-  for (var i = 0; i < NEVER_CACHE_PATTERNS.length; i++) {
-    if (NEVER_CACHE_PATTERNS[i].test(url)) return true;
-  }
-  return false;
-}
-
-/* ──────────────── INSTALL ──────────────── */
+// ── INSTALL ───────────────────────────────────────────────────────────────────
 self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches.open(SHELL_CACHE).then(function (cache) {
-      return cache.addAll(SHELL_ASSETS.map(function (url) {
-        // Use no-cors for cross-origin CDN assets
-        return new Request(url, { mode: 'no-cors' });
-      })).catch(function (err) {
-        console.warn('[SW] Shell cache partial failure (non-fatal):', err);
-      });
-    }).then(function () {
-      return self.skipWaiting();
-    })
+    caches.open(CACHE_NAME)
+      .then(function (cache) {
+        return cache.addAll(SHELL_ASSETS);
+      })
+      .then(function () {
+        // Warm CDN assets in the background; individual failures are silently ignored
+        caches.open(CACHE_NAME).then(function (cache) {
+          CDN_ASSETS.forEach(function (url) {
+            fetch(url, { mode: 'cors', credentials: 'omit' })
+              .then(function (res) {
+                if (res && res.ok) { cache.put(url, res); }
+              })
+              .catch(function () { /* non-critical */ });
+          });
+        });
+
+        return self.skipWaiting();
+      })
   );
 });
 
-/* ──────────────── ACTIVATE ──────────────── */
+// ── ACTIVATE ──────────────────────────────────────────────────────────────────
 self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys().then(function (keys) {
-      return Promise.all(
-        keys.filter(function (k) {
-          return k !== SHELL_CACHE && k !== DYNAMIC_CACHE;
-        }).map(function (k) {
-          console.log('[SW] Deleting old cache:', k);
-          return caches.delete(k);
-        })
-      );
-    }).then(function () {
-      return self.clients.claim();
-    })
+    caches.keys()
+      .then(function (keys) {
+        return Promise.all(
+          keys
+            .filter(function (key) { return key !== CACHE_NAME; })
+            .map(function (key) { return caches.delete(key); })
+        );
+      })
+      .then(function () {
+        return self.clients.claim();
+      })
   );
 });
 
-/* ──────────────── FETCH ──────────────── */
+// ── MESSAGE: page can request the SW to echo back a stored key ────────────────
+// The page posts { type: 'GET_KEY_FROM_URL' } and SW replies with any ?key=
+// param it extracted from the most recent navigation request.
+var _lastKeyFromUrl = null;
+
+self.addEventListener('message', function (event) {
+  if (!event.data) return;
+
+  if (event.data.type === 'GET_KEY_FROM_URL') {
+    if (event.source && _lastKeyFromUrl) {
+      event.source.postMessage({ type: 'SW_KEY_RESPONSE', key: _lastKeyFromUrl });
+    }
+  }
+});
+
+// ── HELPER: extract `?key=` from a URL string ─────────────────────────────────
+function extractKeyParam(urlString) {
+  try {
+    var url = new URL(urlString);
+    return url.searchParams.get('key') || null;
+  } catch (e) {
+    // Fallback for browsers without URL constructor in SW context
+    var match = urlString.match(/[?&]key=([^&]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+}
+
+// ── HELPER: cache key for navigation (strip query string so we always
+//    match the shell regardless of ?key= or ?shortcut= params) ─────────────────
+function navigationCacheKey(request) {
+  try {
+    var url = new URL(request.url);
+    // Only strip query params; keep origin + pathname
+    return new Request(url.origin + url.pathname);
+  } catch (e) {
+    return request;
+  }
+}
+
+// ── FETCH ─────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', function (event) {
-  var url = event.request.url;
+  var request = event.request;
 
-  // 1. Activation API — ALWAYS network, never cache
-  if (isActivationRequest(url)) {
-    event.respondWith(fetch(event.request));
+  // Only intercept GET — pass all other methods through unchanged
+  if (request.method !== 'GET') return;
+
+  var url = request.url;
+
+  // ── Strategy A: Navigation requests (HTML page loads) — Network-First ────
+  // • Always try network first to get fresh HTML from the host.
+  // • Serve cached shell as offline fallback.
+  // • Extract ?key= and stash it so the page can ask for it via postMessage.
+  // • Cache the response under the path-only key (no query string) so future
+  //   offline loads of ANY ?key= URL still hit the shell cache.
+  if (request.mode === 'navigate') {
+    // Capture the key BEFORE the async respond chain
+    var keyParam = extractKeyParam(url);
+    if (keyParam) {
+      _lastKeyFromUrl = keyParam;
+      // Broadcast to any already-open clients immediately
+      self.clients.matchAll({ type: 'window' }).then(function (clients) {
+        clients.forEach(function (client) {
+          client.postMessage({ type: 'SW_KEY_BROADCAST', key: keyParam });
+        });
+      });
+    }
+
+    event.respondWith(
+      fetch(request)
+        .then(function (res) {
+          if (res && res.ok) {
+            // Cache under path-only key so offline works for all query variants
+            var cacheKey = navigationCacheKey(request);
+            var clone = res.clone();
+            caches.open(CACHE_NAME).then(function (c) { c.put(cacheKey, clone); });
+          }
+          return res;
+        })
+        .catch(function () {
+          // Offline — serve the cached shell; the key will come from cookie/LS
+          var cacheKey = navigationCacheKey(request);
+          return caches.match(cacheKey)
+            .then(function (cached) {
+              return cached || caches.match('./index.html');
+            });
+        })
+    );
     return;
   }
 
-  // 2. POST requests — pass through (never cache mutations)
-  if (event.request.method !== 'GET') {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // 3. App shell (HTML, JS, CSS, fonts) — cache-first
-  if (
-    url.indexOf(self.location.origin) !== -1 ||
+  // ── Strategy B: CDN / static assets — Cache-First ────────────────────────
+  var isCDN = (
     url.indexOf('fonts.googleapis.com') !== -1 ||
+    url.indexOf('fonts.gstatic.com') !== -1 ||
     url.indexOf('cdnjs.cloudflare.com') !== -1 ||
     url.indexOf('cdn.jsdelivr.net') !== -1
-  ) {
+  );
+
+  if (isCDN) {
     event.respondWith(
-      caches.match(event.request).then(function (cached) {
-        if (cached) return cached;
-        return fetch(event.request).then(function (response) {
-          if (response && response.status === 200) {
-            var clone = response.clone();
-            caches.open(DYNAMIC_CACHE).then(function (cache) {
-              cache.put(event.request, clone);
-            });
-          }
-          return response;
-        }).catch(function () {
-          // Return a minimal offline fallback for HTML requests
-          if (event.request.headers.get('Accept') && event.request.headers.get('Accept').indexOf('text/html') !== -1) {
-            return caches.match('./index.html');
-          }
-        });
+      caches.match(request).then(function (cached) {
+        if (cached) {
+          // Stale-while-revalidate
+          fetch(request, { mode: 'cors', credentials: 'omit' })
+            .then(function (res) {
+              if (res && res.ok) {
+                caches.open(CACHE_NAME).then(function (c) { c.put(request, res); });
+              }
+            })
+            .catch(function () {});
+          return cached;
+        }
+        return fetch(request, { mode: 'cors', credentials: 'omit' })
+          .then(function (res) {
+            if (res && res.ok) {
+              var clone = res.clone();
+              caches.open(CACHE_NAME).then(function (c) { c.put(request, clone); });
+            }
+            return res;
+          });
       })
     );
     return;
   }
 
-  // 4. Everything else — network with cache fallback
+  // ── Strategy C: All other requests — Network-First with cache fallback ────
+  // Skip caching Supabase API calls — they must always go to the network
+  if (url.indexOf('supabase.co') !== -1) {
+    return; // Let the browser handle it natively (no SW interception)
+  }
+
   event.respondWith(
-    fetch(event.request).then(function (response) {
-      return response;
-    }).catch(function () {
-      return caches.match(event.request);
-    })
-  );
-});
-
-/* ──────────────── PUSH NOTIFICATIONS ──────────────── */
-self.addEventListener('push', function (event) {
-  if (!event.data) return;
-  try {
-    var data = event.data.json();
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Nebula', {
-        body: data.body || '',
-        icon: './logo.png',
-        badge: './logo.png',
-        tag: data.tag || 'nebula-push',
-        data: { url: data.url || './' }
-      })
-    );
-  } catch (e) {}
-});
-
-self.addEventListener('notificationclick', function (event) {
-  event.notification.close();
-  var targetUrl = (event.notification.data && event.notification.data.url) || './';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (windowClients) {
-      for (var i = 0; i < windowClients.length; i++) {
-        if (windowClients[i].url === targetUrl && 'focus' in windowClients[i]) {
-          return windowClients[i].focus();
+    fetch(request)
+      .then(function (res) {
+        if (res && res.ok) {
+          var clone = res.clone();
+          caches.open(CACHE_NAME).then(function (c) { c.put(request, clone); });
         }
-      }
-      if (clients.openWindow) return clients.openWindow(targetUrl);
-    })
+        return res;
+      })
+      .catch(function () {
+        return caches.match(request);
+      })
   );
 });
