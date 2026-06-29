@@ -791,51 +791,63 @@ html[dir="ltr"] .toast { right:28px; }
      LICENSE ACTIVATION SYSTEM — Supabase Integration
      ============================================================ -->
 
-<!-- 1. Supabase JS — robust synchronous loader with multi-CDN fallback -->
+<!-- 1. Supabase JS — promise-based multi-CDN loader
+     window.__supabaseReady resolves when the library is confirmed available,
+     or rejects with a human-readable reason after all sources are exhausted.
+     The activation block below awaits this promise instead of guessing timing. -->
 <script>
 (function () {
-  // Ordered list of CDN sources. The first one that succeeds wins.
   var SUPABASE_CDNS = [
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
     'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.39.3/umd/supabase.min.js'
   ];
 
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement('script');
-      s.src = src;
-      s.async = false; // preserve execution order
-      s.onload  = function () { resolve(src); };
-      s.onerror = function () { reject(new Error('CDN failed: ' + src)); };
-      document.head.appendChild(s);
-    });
+  // If the library is already present (SW cache hit), resolve immediately.
+  if (typeof window.supabase !== 'undefined') {
+    window.__supabaseReady = Promise.resolve();
+    return;
   }
 
-  function tryNext(index) {
-    if (index >= SUPABASE_CDNS.length) {
-      // All CDNs exhausted — expose a clear error flag for the activation block below
-      window.__supabaseLoadError = 'All CDN sources failed. Check your network or Content Security Policy.';
-      console.error('[Nebula] Supabase failed to load from all CDN sources:', SUPABASE_CDNS);
-      return;
-    }
-    loadScript(SUPABASE_CDNS[index]).then(function () {
-      // Sanity-check: the UMD bundle must expose window.supabase
-      if (typeof window.supabase === 'undefined') {
-        console.warn('[Nebula] Script loaded but window.supabase is still undefined from:', SUPABASE_CDNS[index]);
-        tryNext(index + 1);
+  window.__supabaseReady = new Promise(function (resolve, reject) {
+    function tryNext(index) {
+      if (index >= SUPABASE_CDNS.length) {
+        return reject(new Error(
+          'All CDN sources failed to load window.supabase. ' +
+          'Check your internet connection or Content Security Policy. ' +
+          'Sources tried: ' + SUPABASE_CDNS.join(', ')
+        ));
       }
-      // else: success — activation block will find window.supabase ready
-    }).catch(function (err) {
-      console.warn('[Nebula]', err.message, '— trying next CDN…');
-      tryNext(index + 1);
-    });
-  }
 
-  // Only load if not already present (e.g. cached by SW)
-  if (typeof window.supabase === 'undefined') {
+      var src = SUPABASE_CDNS[index];
+      var s   = document.createElement('script');
+      s.src   = src;
+
+      s.onload = function () {
+        // The onload fires when the script has *executed*, so window.supabase
+        // must be defined at this point if the UMD bundle is healthy.
+        if (typeof window.supabase !== 'undefined') {
+          console.log('[Nebula] Supabase loaded from:', src);
+          resolve();
+        } else {
+          // Script ran but didn't expose window.supabase — try next CDN.
+          console.warn('[Nebula] Script executed but window.supabase still undefined:', src);
+          s.parentNode && s.parentNode.removeChild(s);
+          tryNext(index + 1);
+        }
+      };
+
+      s.onerror = function () {
+        console.warn('[Nebula] CDN failed (' + src + ') — trying next…');
+        s.parentNode && s.parentNode.removeChild(s);
+        tryNext(index + 1);
+      };
+
+      document.head.appendChild(s);
+    }
+
     tryNext(0);
-  }
+  });
 })();
 </script>
 
@@ -3447,32 +3459,38 @@ renderAll = function() {
   var btn     = document.getElementById('lic-activate-btn');
   var msgEl   = document.getElementById('lic-msg');
 
-  /* ── Supabase client — explicit check with visible UI error on failure ── */
+  /* ── Supabase client — async init that awaits window.__supabaseReady ──
+     The loader script (top of <head>) injects the library and stores a Promise
+     on window.__supabaseReady that resolves only after window.supabase is
+     confirmed defined. We await that promise here before calling createClient,
+     which eliminates the race condition entirely. */
   var _supabase = null;
-  (function () {
-    if (typeof window.supabase === 'undefined') {
-      // Library failed to load — surface a readable error rather than a silent crash
-      var reason = window.__supabaseLoadError || 'window.supabase is undefined (library did not load).';
-      console.error('[Nebula] Cannot initialise Supabase:', reason);
-      // Show the error in the activation overlay so the user sees it immediately
-      var msgEl2 = document.getElementById('lic-msg');
-      if (msgEl2) {
-        msgEl2.textContent = '⚠️ Library load error — ' + reason;
-        msgEl2.className = 'lic-msg-error';
-      }
-      return; // _supabase stays null; verifyOnServer will reject with a clear message
-    }
-    try {
-      _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } catch (e) {
-      console.error('[Nebula] supabase.createClient() threw:', e);
-      var msgEl3 = document.getElementById('lic-msg');
-      if (msgEl3) {
-        msgEl3.textContent = '⚠️ Supabase init error: ' + (e && e.message ? e.message : String(e));
-        msgEl3.className = 'lic-msg-error';
-      }
-    }
-  })();
+
+  function _initSupabaseClient() {
+    // 10-second timeout — prevents hanging forever if all CDNs stall
+    var timeout = new Promise(function (_, reject) {
+      setTimeout(function () {
+        reject(new Error('Supabase library timed out after 10 s. Check your network or CSP.'));
+      }, 10000);
+    });
+
+    return Promise.race([window.__supabaseReady, timeout])
+      .then(function () {
+        // Promise resolved — window.supabase is guaranteed defined at this point
+        _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('[Nebula] Supabase client ready.');
+      })
+      .catch(function (err) {
+        var reason = err && err.message ? err.message : String(err);
+        console.error('[Nebula] Cannot initialise Supabase:', reason);
+        var msgEl2 = document.getElementById('lic-msg');
+        if (msgEl2) {
+          msgEl2.textContent = '⚠️ Cannot connect to activation server — ' + reason;
+          msgEl2.className   = 'lic-msg-error';
+        }
+        // _supabase stays null; verifyOnServer() will reject with a readable message
+      });
+  }
 
   function hideOverlay() {
     if (!overlay) return;
@@ -3656,7 +3674,10 @@ renderAll = function() {
     });
   }
 
-  init();
+  // Boot sequence: wait for Supabase, then run the activation flow
+  _initSupabaseClient().then(function () {
+    init();
+  });
 
   if (input) {
     input.addEventListener('keydown', function (e) {
