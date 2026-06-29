@@ -3607,8 +3607,10 @@ renderAll = function() {
   /* ── Server call: the ONLY source of truth ── */
   function verifyOnServer(key, fp) {
     if (!_supabase) return Promise.reject(new Error('Supabase client is not available — the library failed to load. Check your internet connection or Content Security Policy.'));
+    console.log('[Nebula] Calling RPC:', RPC_VERIFY, '| key:', key, '| fp:', fp);
     return _supabase.rpc(RPC_VERIFY, { p_key: key, p_fingerprint: fp })
       .then(function (res) {
+        console.log('[Nebula] RPC raw response:', JSON.stringify(res));
         if (res.error) throw res.error;
         return res.data;
       });
@@ -3645,12 +3647,33 @@ renderAll = function() {
             showOverlay();
             showMsg('❌ This activation link is invalid or has been deactivated.', 'error');
           }
-        }).catch(function () {
+        }).catch(function (err) {
+          // Log the exact failure reason — check browser console for details
+          var errMsg = err && (err.message || err.code || err.hint || JSON.stringify(err)) || 'unknown error';
+          console.error('[Nebula] verifyOnServer failed. Raw error:', err);
+          console.error('[Nebula] Error message:', errMsg);
+
           if (cached && cached.key === key && cached.fingerprint === fp) {
             hideOverlay(); // previously confirmed on this exact device — trust offline
-          } else {
-            showOverlay();
+            return;
+          }
+
+          showOverlay();
+          // Give a specific message based on error type so you know what to fix
+          var isNetworkErr = !navigator.onLine
+            || errMsg.indexOf('fetch') !== -1
+            || errMsg.indexOf('network') !== -1
+            || errMsg.indexOf('Failed to fetch') !== -1;
+          var isRpcErr = errMsg.indexOf('function') !== -1
+            || errMsg.indexOf('does not exist') !== -1
+            || errMsg.indexOf('42883') !== -1; // PostgreSQL undefined function code
+
+          if (isRpcErr) {
+            showMsg('⚠️ Server error: the verification function was not found. Contact support.', 'error');
+          } else if (isNetworkErr) {
             showMsg('⚠️ No connection — this device needs to verify online once.', 'error');
+          } else {
+            showMsg('⚠️ Verification failed: ' + errMsg, 'error');
           }
         });
         return;
@@ -3676,6 +3699,8 @@ renderAll = function() {
 
   // Boot sequence: wait for Supabase, then run the activation flow
   _initSupabaseClient().then(function () {
+    // Log Supabase endpoint so you can confirm it in the Network tab
+    console.log('[Nebula] Supabase client initialised. Endpoint:', SUPABASE_URL);
     init();
   });
 
