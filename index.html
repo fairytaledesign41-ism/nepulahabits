@@ -785,6 +785,292 @@ html[dir="ltr"] .toast { right:28px; }
   padding: 4px; transition: color 0.2s; line-height: 1;
 }
 .notif-dismiss-btn:hover { color: var(--text-secondary); }
+
+/* ═══════════════════════════════════════════════════════
+   RAMADAN MODE — CSS
+   ═══════════════════════════════════════════════════════ */
+
+/* Ramadan golden theme overlay on <html> */
+html.ramadan-mode {
+  --ramadan-gold:    #f5c842;
+  --ramadan-green:   #2ecc71;
+  --ramadan-dark:    #0d1117;
+  --ramadan-card:    #161d2b;
+  --ramadan-border:  rgba(245,200,66,0.22);
+  --ramadan-glow:    rgba(245,200,66,0.35);
+}
+html.ramadan-mode body { background: var(--ramadan-dark); }
+html.ramadan-mode .card { border-color: var(--ramadan-border); background: var(--ramadan-card); }
+html.ramadan-mode .sidebar { border-color: var(--ramadan-border); }
+html.ramadan-mode .nav-item.active,
+html.ramadan-mode .nav-item:hover { background: rgba(245,200,66,0.08); }
+html.ramadan-mode .btn-primary {
+  background: linear-gradient(135deg, #f5c842, #e67e22) !important;
+  box-shadow: 0 4px 20px rgba(245,200,66,0.4) !important;
+}
+
+/* Ramadan stars / crescent ambient bar */
+.ramadan-ambient-bar {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, rgba(245,200,66,0.08), rgba(245,200,66,0.18), rgba(245,200,66,0.08));
+  border-bottom: 1px solid rgba(245,200,66,0.2);
+  font-size: 13px;
+  color: #f5c842;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+html.ramadan-mode .ramadan-ambient-bar { display: flex; }
+
+/* Ramadan Section */
+#ramadan { }
+
+.ramadan-hero {
+  background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
+  border: 1px solid rgba(245,200,66,0.3);
+  border-radius: 20px;
+  padding: 32px 28px 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.ramadan-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(245,200,66,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.ramadan-hero-moon { font-size: 56px; margin-bottom: 8px; line-height: 1; display: block; }
+.ramadan-hero-title {
+  font-size: 26px; font-weight: 800;
+  background: linear-gradient(135deg, #f5c842, #e67e22);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; margin-bottom: 6px;
+}
+.ramadan-hero-sub { font-size: 14px; color: rgba(245,200,66,0.7); margin-bottom: 20px; }
+
+/* Countdown */
+.ramadan-countdown {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.ramadan-cd-unit {
+  background: rgba(245,200,66,0.1);
+  border: 1px solid rgba(245,200,66,0.25);
+  border-radius: 14px;
+  padding: 12px 18px;
+  text-align: center;
+  min-width: 68px;
+}
+.ramadan-cd-num {
+  font-size: 28px; font-weight: 800; color: #f5c842; line-height: 1; display: block;
+}
+.ramadan-cd-lbl { font-size: 11px; color: rgba(245,200,66,0.6); margin-top: 4px; display: block; }
+
+/* Day counter badge */
+.ramadan-day-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(245,200,66,0.15);
+  border: 1px solid rgba(245,200,66,0.3);
+  border-radius: 20px; padding: 6px 16px;
+  font-size: 13px; font-weight: 700; color: #f5c842;
+  margin-bottom: 0;
+}
+
+/* Prayer times grid */
+.prayer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.prayer-card {
+  background: var(--bg-card, #111827);
+  border: 1px solid rgba(245,200,66,0.18);
+  border-radius: 14px;
+  padding: 16px 12px;
+  text-align: center;
+  transition: all 0.2s;
+  cursor: default;
+}
+html.ramadan-mode .prayer-card { background: #161d2b; }
+.prayer-card.active-prayer {
+  border-color: #f5c842;
+  background: rgba(245,200,66,0.1);
+  box-shadow: 0 0 18px rgba(245,200,66,0.2);
+}
+.prayer-card-icon { font-size: 22px; margin-bottom: 6px; display: block; }
+.prayer-card-name { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.prayer-card-time {
+  font-size: 15px; font-weight: 800; color: #f5c842;
+  font-variant-numeric: tabular-nums;
+}
+.prayer-card-status { font-size: 10px; color: rgba(245,200,66,0.5); margin-top: 3px; }
+
+/* Prayer config */
+.prayer-config-row {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;
+}
+.prayer-config-row label { font-size: 13px; color: var(--text-secondary); min-width: 100px; }
+.prayer-config-row input[type=time],
+.prayer-config-row input[type=number] {
+  background: var(--bg-elevated, #1f2937);
+  border: 1px solid rgba(245,200,66,0.25);
+  border-radius: 8px; padding: 8px 12px;
+  color: #f5c842; font-family: inherit; font-size: 13px;
+  outline: none; width: 130px;
+}
+
+/* Habit trackers */
+.ramadan-trackers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+
+.ram-tracker-card {
+  background: var(--bg-card, #111827);
+  border: 1px solid rgba(245,200,66,0.18);
+  border-radius: 16px; padding: 20px;
+}
+html.ramadan-mode .ram-tracker-card { background: #161d2b; }
+.ram-tracker-title {
+  font-size: 15px; font-weight: 700; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ram-tracker-title i { color: #f5c842; }
+
+/* Fasting tracker */
+.fasting-btn {
+  width: 100%; padding: 14px; border-radius: 12px; border: none; cursor: pointer;
+  font-size: 15px; font-weight: 700; font-family: inherit;
+  transition: all 0.2s;
+}
+.fasting-btn.not-fasting {
+  background: rgba(245,200,66,0.1);
+  border: 2px dashed rgba(245,200,66,0.4);
+  color: #f5c842;
+}
+.fasting-btn.fasting {
+  background: linear-gradient(135deg, #f5c842, #e67e22);
+  color: #0d1117; border: none;
+  box-shadow: 0 4px 16px rgba(245,200,66,0.35);
+}
+.fasting-streak { font-size: 12px; color: rgba(245,200,66,0.6); margin-top: 8px; text-align: center; }
+
+/* Water tracker */
+.water-cups { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.water-cup {
+  width: 38px; height: 44px;
+  border: 2px solid rgba(56,189,248,0.3);
+  border-radius: 6px 6px 10px 10px;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; background: transparent;
+  position: relative; overflow: hidden;
+}
+.water-cup.filled {
+  background: rgba(56,189,248,0.2);
+  border-color: rgba(56,189,248,0.7);
+}
+.water-cup::before {
+  content: '💧';
+  position: absolute; font-size: 16px;
+  opacity: 0; transition: opacity 0.2s;
+}
+.water-cup.filled::before { opacity: 1; }
+.water-label { font-size: 12px; color: var(--text-secondary); }
+
+/* Quran progress */
+.quran-bar-wrap { background: rgba(255,255,255,0.05); border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+.quran-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #2ecc71, #27ae60); transition: width 0.4s; }
+.quran-controls { display: flex; gap: 8px; align-items: center; }
+.quran-controls input[type=number] {
+  width: 70px; background: var(--bg-elevated, #1f2937);
+  border: 1px solid rgba(46,204,113,0.3); border-radius: 8px;
+  padding: 8px 10px; color: #2ecc71; font-family: inherit; font-size: 14px; outline: none;
+}
+.quran-total-lbl { font-size: 12px; color: var(--text-muted); }
+
+/* Prayer counter */
+.prayer-counter-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.pc-item {
+  text-align: center; cursor: pointer;
+  background: rgba(245,200,66,0.06);
+  border: 1px solid rgba(245,200,66,0.15);
+  border-radius: 10px; padding: 8px 4px;
+  transition: all 0.2s;
+}
+.pc-item.done {
+  background: rgba(245,200,66,0.18);
+  border-color: #f5c842;
+}
+.pc-item-name { font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; }
+.pc-item-icon { font-size: 18px; }
+
+/* Tasbeeh counter */
+.tasbeeh-wrap { text-align: center; }
+.tasbeeh-count {
+  font-size: 52px; font-weight: 800; color: #f5c842;
+  line-height: 1; margin-bottom: 8px; font-variant-numeric: tabular-nums;
+}
+.tasbeeh-target { font-size: 12px; color: rgba(245,200,66,0.5); margin-bottom: 16px; }
+.tasbeeh-btn {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, #f5c842, #e67e22);
+  border: none; cursor: pointer; font-size: 28px;
+  box-shadow: 0 4px 20px rgba(245,200,66,0.4);
+  transition: all 0.15s; display: inline-flex;
+  align-items: center; justify-content: center;
+}
+.tasbeeh-btn:active { transform: scale(0.93); }
+.tasbeeh-controls { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+.tasbeeh-controls button {
+  background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.25);
+  border-radius: 8px; padding: 6px 14px; color: #f5c842;
+  font-size: 12px; cursor: pointer; font-family: inherit;
+}
+
+/* Ramadan nav highlight */
+html.ramadan-mode .nav-item[onclick*="ramadan"] {
+  color: #f5c842;
+}
+
+/* Settings toggle */
+.ramadan-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 0; border-bottom: 1px solid var(--border);
+}
+.ramadan-toggle-label { font-size: 15px; font-weight: 600; }
+.ramadan-toggle-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.toggle-switch {
+  position: relative; width: 52px; height: 28px; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--border);
+  border-radius: 28px; cursor: pointer; transition: 0.3s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 20px; height: 20px; background: #fff;
+  border-radius: 50%; bottom: 4px; left: 4px; transition: 0.3s;
+}
+.toggle-switch input:checked + .toggle-slider { background: #f5c842; }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(24px); }
+
+@media (max-width: 600px) {
+  .ramadan-countdown { gap: 10px; }
+  .ramadan-cd-unit { min-width: 56px; padding: 10px 12px; }
+  .ramadan-cd-num { font-size: 22px; }
+  .prayer-grid { grid-template-columns: repeat(3, 1fr); }
+}
 </style>
 
 <!-- ============================================================
@@ -1069,6 +1355,7 @@ html[dir="ltr"] #lic-key-input { padding: 14px 16px 14px 44px; text-align: left;
   <div class="nav-item" onclick="navigate(this,'analytics')"><i class="fas fa-chart-line"></i><span class="nav-label" data-key="navAnalytics">Analytics</span></div>
   <div class="nav-item" onclick="navigate(this,'notes')"><i class="fas fa-book-open"></i><span class="nav-label" data-key="navNotes">Notes</span></div>
   <div class="nav-item" onclick="navigate(this,'longterm')"><i class="fas fa-hourglass-half"></i><span class="nav-label" data-key="navIntervalHabits">Interval Habits</span></div>
+  <div class="nav-item" onclick="navigate(this,'ramadan')"><i class="fas fa-moon"></i><span class="nav-label" data-key="navRamadan">رمضان</span></div>
   <div class="spacer"></div>
   <div class="user-avatar">N</div>
 </nav>
@@ -1098,6 +1385,13 @@ html[dir="ltr"] #lic-key-input { padding: 14px 16px 14px 44px; text-align: left;
   </div>
 
   <!-- ===== DASHBOARD ===== -->
+  <!-- Ramadan ambient bar (visible only in Ramadan mode) -->
+  <div class="ramadan-ambient-bar" id="ramadanAmbientBar">
+    <span>🌙</span>
+    <span id="ramadanAmbientText">رمضان المبارك</span>
+    <span>⭐</span>
+  </div>
+
   <section class="section active" id="dashboard">
     <!-- Motivational Quote Banner -->
     <div class="quote-banner" id="quoteBanner">
@@ -1231,6 +1525,20 @@ html[dir="ltr"] #lic-key-input { padding: 14px 16px 14px 44px; text-align: left;
       </div>
       <div class="grid grid-3" id="catGrid"></div>
     </div>
+  <!-- Ramadan Mode toggle inside Setup -->
+    <div class="card" style="margin-top:20px;">
+      <div class="section-title" style="margin-bottom:16px;font-size:16px;"><i class="fas fa-moon" style="color:#f5c842"></i> <span data-key="ramadanModeLabel">وضع رمضان</span></div>
+      <div class="ramadan-toggle-row">
+        <div>
+          <div class="ramadan-toggle-label" data-key="ramadanModeLabel">وضع رمضان</div>
+          <div class="ramadan-toggle-sub" data-key="ramadanModeSub">تفعيل قسم تتبع رمضان الخاص</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ramadanToggle" onchange="toggleRamadanMode(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
   </section>
 
   <!-- ===== REWARDS ===== -->
@@ -1330,6 +1638,99 @@ html[dir="ltr"] #lic-key-input { padding: 14px 16px 14px 44px; text-align: left;
       <button class="lt-add-btn" onclick="ltOpenAddModal()"><i class="fas fa-plus"></i> <span data-key="ltAddBtn">New Interval Habit</span></button>
     </div>
     <div id="ltGrid" class="lt-grid"></div>
+  </section>
+
+  <!-- ===== RAMADAN MODE SECTION ===== -->
+  <section class="section" id="ramadan">
+    <div class="section-title"><i class="fas fa-moon" style="color:#f5c842"></i> <span data-key="navRamadan">وضع رمضان</span></div>
+
+    <!-- Hero / Countdown -->
+    <div class="ramadan-hero">
+      <span class="ramadan-hero-moon">🌙</span>
+      <div class="ramadan-hero-title" data-key="ramadanTitle">رمضان المبارك</div>
+      <div class="ramadan-hero-sub" data-key="ramadanSub">تتبع عباداتك وعاداتك في شهر الخير</div>
+      <div class="ramadan-countdown" id="ramadanCountdown">
+        <div class="ramadan-cd-unit"><span class="ramadan-cd-num" id="rcdDays">--</span><span class="ramadan-cd-lbl" data-key="rcdDays">أيام</span></div>
+        <div class="ramadan-cd-unit"><span class="ramadan-cd-num" id="rcdHours">--</span><span class="ramadan-cd-lbl" data-key="rcdHours">ساعات</span></div>
+        <div class="ramadan-cd-unit"><span class="ramadan-cd-num" id="rcdMins">--</span><span class="ramadan-cd-lbl" data-key="rcdMins">دقائق</span></div>
+        <div class="ramadan-cd-unit"><span class="ramadan-cd-num" id="rcdSecs">--</span><span class="ramadan-cd-lbl" data-key="rcdSecs">ثواني</span></div>
+      </div>
+      <div id="ramadanDayBadge" style="margin-top:12px;display:none;">
+        <span class="ramadan-day-badge">🌙 <span data-key="ramadanDay">اليوم</span> <span id="ramadanDayNum">1</span> <span data-key="ramadanOf">من رمضان</span></span>
+      </div>
+    </div>
+
+    <!-- Prayer times -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header" style="margin-bottom:16px;">
+        <span class="card-title" data-key="ramadanPrayers">🕌 أوقات الصلاة</span>
+        <button onclick="togglePrayerConfig()" style="background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:8px;padding:6px 14px;color:#f5c842;font-size:12px;cursor:pointer;font-family:inherit;" data-key="ramadanSetTimes">ضبط الأوقات</button>
+      </div>
+      <div class="prayer-grid" id="prayerGrid">
+        <!-- rendered by JS -->
+      </div>
+      <div id="prayerConfigPanel" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid rgba(245,200,66,0.15);">
+        <div style="font-size:13px;color:rgba(245,200,66,0.7);margin-bottom:14px;" data-key="ramadanConfigHint">أدخل أوقات الصلاة بتوقيت مدينتك</div>
+        <div id="prayerConfigRows"></div>
+        <button onclick="savePrayerTimes()" class="btn btn-primary" style="margin-top:10px;" data-key="btnSave">حفظ</button>
+      </div>
+    </div>
+
+    <!-- Trackers row -->
+    <div class="ramadan-trackers">
+
+      <!-- Fasting tracker -->
+      <div class="ram-tracker-card">
+        <div class="ram-tracker-title"><i class="fas fa-sun"></i> <span data-key="ramadanFasting">تتبع الصيام</span></div>
+        <button class="fasting-btn not-fasting" id="fastingBtn" onclick="toggleFasting()">
+          <span id="fastingBtnText">🌙 سجّل صيام اليوم</span>
+        </button>
+        <div class="fasting-streak" id="fastingStreak"></div>
+      </div>
+
+      <!-- Water intake -->
+      <div class="ram-tracker-card">
+        <div class="ram-tracker-title"><i class="fas fa-tint" style="color:#38bdf8"></i> <span data-key="ramadanWater">شرب الماء</span></div>
+        <div class="water-cups" id="waterCups"></div>
+        <div class="water-label" id="waterLabel"></div>
+      </div>
+
+      <!-- Quran pages -->
+      <div class="ram-tracker-card">
+        <div class="ram-tracker-title"><i class="fas fa-book-open" style="color:#2ecc71"></i> <span data-key="ramadanQuran">صفحات القرآن</span></div>
+        <div class="quran-bar-wrap"><div class="quran-bar-fill" id="quranBarFill" style="width:0%"></div></div>
+        <div class="quran-total-lbl" id="quranTotalLbl" style="margin-bottom:10px;"></div>
+        <div class="quran-controls">
+          <button onclick="quranAdj(-1)" style="background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:8px;padding:8px 12px;color:#2ecc71;cursor:pointer;font-size:16px;">−</button>
+          <input type="number" id="quranPages" min="0" max="604" value="0" oninput="updateQuran()">
+          <button onclick="quranAdj(1)" style="background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);border-radius:8px;padding:8px 12px;color:#2ecc71;cursor:pointer;font-size:16px;">+</button>
+          <span style="font-size:12px;color:var(--text-muted);">/ 604</span>
+        </div>
+      </div>
+
+      <!-- 5 Prayers checker -->
+      <div class="ram-tracker-card">
+        <div class="ram-tracker-title"><i class="fas fa-mosque"></i> <span data-key="ramadanPrayersDone">الصلوات اليومية</span></div>
+        <div class="prayer-counter-grid" id="prayerCounterGrid"></div>
+        <div style="font-size:12px;color:rgba(245,200,66,0.5);margin-top:10px;text-align:center;" id="prayerCounterStatus"></div>
+      </div>
+
+      <!-- Tasbeeh counter -->
+      <div class="ram-tracker-card" style="text-align:center;">
+        <div class="ram-tracker-title" style="justify-content:center;"><i class="fas fa-circle-notch"></i> <span data-key="ramadanTasbeeh">عداد التسبيح</span></div>
+        <div class="tasbeeh-wrap">
+          <div class="tasbeeh-count" id="tasbeehCount">0</div>
+          <div class="tasbeeh-target" id="tasbeehTarget">الهدف: 100</div>
+          <button class="tasbeeh-btn" onclick="tasbeehTap()">☪️</button>
+          <div class="tasbeeh-controls">
+            <button onclick="tasbeehReset()" data-key="btnReset">إعادة</button>
+            <button onclick="tasbeehSetTarget()" data-key="ramadanSetTarget">تغيير الهدف</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end ramadan-trackers -->
+
   </section>
 </main>
 
@@ -1530,6 +1931,32 @@ var i18n = {
     // --- Insights ---
     insightsTitle: 'Nebula Recommendations',
     insightAnalyzing: 'Analyzing your habits…',
+    // --- Ramadan Mode ---
+    navRamadan: 'Ramadan',
+    ramadanTitle: 'Ramadan Mubarak 🌙',
+    ramadanSub: 'Track your worship and habits in the blessed month',
+    ramadanPrayers: '🕌 Prayer Times',
+    ramadanSetTimes: 'Set Times',
+    ramadanConfigHint: 'Enter prayer times for your city',
+    ramadanFasting: 'Fasting Tracker',
+    ramadanWater: 'Water Intake',
+    ramadanQuran: 'Quran Pages',
+    ramadanPrayersDone: 'Daily Prayers',
+    ramadanTasbeeh: 'Tasbeeh Counter',
+    ramadanDay: 'Day',
+    ramadanOf: 'of Ramadan',
+    ramadanSetTarget: 'Change Target',
+    rcdDays: 'Days', rcdHours: 'Hours', rcdMins: 'Minutes', rcdSecs: 'Seconds',
+    ramadanModeLabel: 'Ramadan Mode',
+    ramadanModeSub: 'Activate the special Ramadan tracking section',
+    ramadanFastingOn: '✅ Fasting Today',
+    ramadanFastingOff: '🌙 Log Today\'s Fast',
+    ramadanFastingStreak: '{n} days fasted',
+    ramadanWaterOf: '{n} of {total} glasses',
+    ramadanQuranOf: '{n} of 604 pages',
+    ramadanAllPrayers: '🌟 All prayers done! Masha\'Allah',
+    ramadanCountdownTitle: 'Countdown to Ramadan',
+    ramadanInProgress: 'Ramadan in Progress',
   },
   ar: {
     pageTitle: 'نيبولا — متتبع العادات الرقمي',
@@ -1629,6 +2056,32 @@ var i18n = {
     // --- Insights ---
     insightsTitle: 'توصيات نيبولا',
     insightAnalyzing: 'جارٍ تحليل عاداتك…',
+    // --- Ramadan Mode ---
+    navRamadan: 'رمضان',
+    ramadanTitle: 'رمضان المبارك 🌙',
+    ramadanSub: 'تتبع عباداتك وعاداتك في شهر الخير',
+    ramadanPrayers: '🕌 أوقات الصلاة',
+    ramadanSetTimes: 'ضبط الأوقات',
+    ramadanConfigHint: 'أدخل أوقات الصلاة بتوقيت مدينتك',
+    ramadanFasting: 'تتبع الصيام',
+    ramadanWater: 'شرب الماء',
+    ramadanQuran: 'صفحات القرآن',
+    ramadanPrayersDone: 'الصلوات اليومية',
+    ramadanTasbeeh: 'عداد التسبيح',
+    ramadanDay: 'اليوم',
+    ramadanOf: 'من رمضان',
+    ramadanSetTarget: 'تغيير الهدف',
+    rcdDays: 'أيام', rcdHours: 'ساعات', rcdMins: 'دقائق', rcdSecs: 'ثواني',
+    ramadanModeLabel: 'وضع رمضان',
+    ramadanModeSub: 'تفعيل قسم تتبع رمضان الخاص',
+    ramadanFastingOn: '✅ صائم اليوم',
+    ramadanFastingOff: '🌙 سجّل صيام اليوم',
+    ramadanFastingStreak: '{n} أيام صيام',
+    ramadanWaterOf: '{n} من {total} كوب',
+    ramadanQuranOf: '{n} من 604 صفحة',
+    ramadanAllPrayers: '🌟 أديت جميع الصلوات! ما شاء الله',
+    ramadanCountdownTitle: 'العد التنازلي لرمضان',
+    ramadanInProgress: 'رمضان المبارك جارٍ',
   },
   fr: {
     pageTitle: 'Nebula — Traqueur d\'Habitudes',
@@ -1728,6 +2181,32 @@ var i18n = {
     // --- Insights ---
     insightsTitle: 'Recommandations Nebula',
     insightAnalyzing: 'Analyse de vos habitudes…',
+    // --- Ramadan Mode ---
+    navRamadan: 'Ramadan',
+    ramadanTitle: 'Ramadan Mubarak 🌙',
+    ramadanSub: 'Suivez vos actes de dévotion durant le mois béni',
+    ramadanPrayers: '🕌 Horaires des Prières',
+    ramadanSetTimes: 'Définir les heures',
+    ramadanConfigHint: 'Entrez les horaires de prière pour votre ville',
+    ramadanFasting: 'Suivi du Jeûne',
+    ramadanWater: 'Consommation d\'Eau',
+    ramadanQuran: 'Pages du Coran',
+    ramadanPrayersDone: 'Prières Quotidiennes',
+    ramadanTasbeeh: 'Compteur de Tasbeeh',
+    ramadanDay: 'Jour',
+    ramadanOf: 'du Ramadan',
+    ramadanSetTarget: 'Changer l\'objectif',
+    rcdDays: 'Jours', rcdHours: 'Heures', rcdMins: 'Minutes', rcdSecs: 'Secondes',
+    ramadanModeLabel: 'Mode Ramadan',
+    ramadanModeSub: 'Activer la section de suivi spéciale Ramadan',
+    ramadanFastingOn: '✅ Je jeûne aujourd\'hui',
+    ramadanFastingOff: '🌙 Enregistrer le jeûne du jour',
+    ramadanFastingStreak: '{n} jours de jeûne',
+    ramadanWaterOf: '{n} sur {total} verres',
+    ramadanQuranOf: '{n} sur 604 pages',
+    ramadanAllPrayers: '🌟 Toutes les prières accomplies ! Masha\'Allah',
+    ramadanCountdownTitle: 'Compte à rebours jusqu\'au Ramadan',
+    ramadanInProgress: 'Ramadan en cours',
   }
 };
 
@@ -1924,6 +2403,8 @@ function updateDateChip(){
 
 // FIX: navigate now takes the element as parameter — works on all browsers
 function navigate(el, id){
+  // If navigating to ramadan section, initialise it
+  if (id === 'ramadan') { setTimeout(initRamadanSection, 50); }
   var navItems = document.querySelectorAll('.nav-item');
   for(var ni=0; ni<navItems.length; ni++) navItems[ni].classList.remove('active');
   el.classList.add('active');
@@ -2970,9 +3451,10 @@ document.addEventListener('keydown', function(e){
 
 // DOMContentLoaded — cross-browser safe
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', function(){ init(); initRamadanMode(); });
 } else {
   init();
+  initRamadanMode();
 }
 
 // ╔══════════════════════════════════════════════════════════════════════╗
@@ -3763,9 +4245,391 @@ renderAll = function() {
     }
   };
 
+
 })();
 </script>
 <!-- ================================================================ -->
+
+<script>
+// ── Ramadan Mode (loaded after license system) ──
+// ═══════════════════════════════════════════════════════════════════════
+// RAMADAN MODE — JavaScript
+// ═══════════════════════════════════════════════════════════════════════
+
+var _ramadanState = null;
+
+function getRamadanState() {
+  if (_ramadanState) return _ramadanState;
+  try {
+    var raw = _safeStorage.getItem('nebula_ramadan');
+    _ramadanState = raw ? JSON.parse(raw) : {};
+  } catch(e) { _ramadanState = {}; }
+  return _ramadanState;
+}
+
+function saveRamadanState() {
+  try { _safeStorage.setItem('nebula_ramadan', JSON.stringify(_ramadanState)); } catch(e) {}
+}
+
+function todayKey() {
+  var d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+
+function toggleRamadanMode(on) {
+  var html = document.getElementById('htmlRoot');
+  var nav  = document.querySelector('.nav-item[onclick*="ramadan"]');
+  if (on) {
+    html.classList.add('ramadan-mode');
+    if (nav) nav.style.display = '';
+  } else {
+    html.classList.remove('ramadan-mode');
+    if (nav) nav.style.display = 'none';
+    var ramSection = document.getElementById('ramadan');
+    if (ramSection && ramSection.classList.contains('active')) {
+      navigate(document.querySelector('.nav-item[onclick*="dashboard"]'), 'dashboard');
+    }
+  }
+  var s = getRamadanState();
+  s.enabled = on;
+  saveRamadanState();
+  updateAmbientBar();
+}
+
+function updateAmbientBar() {
+  var s = getRamadanState();
+  var bar = document.getElementById('ramadanAmbientBar');
+  if (!bar) return;
+  if (s.enabled) {
+    var txt = document.getElementById('ramadanAmbientText');
+    if (txt) txt.textContent = t('ramadanTitle') || 'رمضان المبارك 🌙';
+  }
+}
+
+var RAMADAN_DATES = [
+  new Date('2025-03-01'), new Date('2026-02-18'), new Date('2027-02-07'),
+  new Date('2028-01-28'), new Date('2029-01-16'), new Date('2030-01-06'),
+];
+var RAMADAN_DURATION = 30;
+
+function getNextRamadan() {
+  var now = new Date();
+  for (var i = 0; i < RAMADAN_DATES.length; i++) {
+    var start = RAMADAN_DATES[i];
+    var end   = new Date(start.getTime() + RAMADAN_DURATION * 86400000);
+    if (now < end) return { start: start, end: end };
+  }
+  return { start: RAMADAN_DATES[RAMADAN_DATES.length-1], end: null };
+}
+
+var _ramadanCdInterval = null;
+
+function startRamadanCountdown() {
+  if (_ramadanCdInterval) clearInterval(_ramadanCdInterval);
+  updateRamadanCountdown();
+  _ramadanCdInterval = setInterval(updateRamadanCountdown, 1000);
+}
+
+function updateRamadanCountdown() {
+  var info = getNextRamadan();
+  var now  = new Date();
+  var elDays  = document.getElementById('rcdDays');
+  var elHours = document.getElementById('rcdHours');
+  var elMins  = document.getElementById('rcdMins');
+  var elSecs  = document.getElementById('rcdSecs');
+  var badge   = document.getElementById('ramadanDayBadge');
+  var dayNum  = document.getElementById('ramadanDayNum');
+  var hero    = document.querySelector('.ramadan-hero-title');
+  if (!elDays) return;
+  var inRamadan = now >= info.start && now < info.end;
+  var target = inRamadan ? info.end : info.start;
+  var diff   = Math.max(0, target - now);
+  var d = Math.floor(diff / 86400000);
+  var h = Math.floor((diff % 86400000) / 3600000);
+  var m = Math.floor((diff % 3600000) / 60000);
+  var s = Math.floor((diff % 60000) / 1000);
+  elDays.textContent  = String(d).padStart(2,'0');
+  elHours.textContent = String(h).padStart(2,'0');
+  elMins.textContent  = String(m).padStart(2,'0');
+  elSecs.textContent  = String(s).padStart(2,'0');
+  if (inRamadan) {
+    var dayOfRamadan = Math.floor((now - info.start) / 86400000) + 1;
+    if (dayNum) dayNum.textContent = dayOfRamadan;
+    if (badge)  badge.style.display = 'block';
+    if (hero)   hero.textContent = t('ramadanInProgress') || 'رمضان المبارك جارٍ';
+  } else {
+    if (badge) badge.style.display = 'none';
+    if (hero)  hero.textContent = t('ramadanCountdownTitle') || 'العد التنازلي لرمضان';
+  }
+}
+
+var DEFAULT_PRAYERS = [
+  { key:'fajr',    name:{ar:'الفجر',  en:'Fajr',    fr:'Fajr'},    icon:'🌅', time:'05:00' },
+  { key:'dhuhr',   name:{ar:'الظهر',  en:'Dhuhr',   fr:'Dhuhr'},   icon:'☀️', time:'12:30' },
+  { key:'asr',     name:{ar:'العصر',  en:'Asr',     fr:'Asr'},     icon:'🌤️', time:'15:45' },
+  { key:'maghrib', name:{ar:'المغرب', en:'Maghrib', fr:'Maghrib'}, icon:'🌇', time:'18:30' },
+  { key:'isha',    name:{ar:'العشاء', en:'Isha',    fr:'Isha'},    icon:'🌙', time:'20:00' },
+];
+
+function getPrayerTimes() {
+  var s = getRamadanState();
+  return s.prayerTimes || DEFAULT_PRAYERS.map(function(p){ return {key:p.key,time:p.time}; });
+}
+
+function getCurrentPrayerKey() {
+  var now    = new Date();
+  var nowMin = now.getHours()*60 + now.getMinutes();
+  var times  = getPrayerTimes();
+  var active = null;
+  DEFAULT_PRAYERS.forEach(function(p) {
+    var pt = null;
+    for (var i=0;i<times.length;i++) { if(times[i].key===p.key){pt=times[i];break;} }
+    if (!pt) return;
+    var parts = pt.time.split(':');
+    var pMin  = parseInt(parts[0])*60 + parseInt(parts[1]);
+    if (nowMin >= pMin) active = p.key;
+  });
+  return active;
+}
+
+function renderPrayerGrid() {
+  var grid   = document.getElementById('prayerGrid');
+  if (!grid) return;
+  var times  = getPrayerTimes();
+  var active = getCurrentPrayerKey();
+  var html   = '';
+  DEFAULT_PRAYERS.forEach(function(p) {
+    var pt = null;
+    for (var i=0;i<times.length;i++) { if(times[i].key===p.key){pt=times[i];break;} }
+    var ptime = pt ? pt.time : p.time;
+    var name  = p.name[currentLang] || p.name.ar;
+    var cls   = (active===p.key) ? 'prayer-card active-prayer' : 'prayer-card';
+    var status= (active===p.key) ? (currentLang==='ar'?'الوقت الحالي':'Current') : '';
+    html += '<div class="'+cls+'"><span class="prayer-card-icon">'+p.icon+'</span><div class="prayer-card-name">'+name+'</div><div class="prayer-card-time">'+ptime+'</div><div class="prayer-card-status">'+status+'</div></div>';
+  });
+  grid.innerHTML = html;
+}
+
+function renderPrayerConfig() {
+  var panel = document.getElementById('prayerConfigRows');
+  if (!panel) return;
+  var times = getPrayerTimes();
+  var html  = '';
+  DEFAULT_PRAYERS.forEach(function(p) {
+    var pt = null;
+    for (var i=0;i<times.length;i++) { if(times[i].key===p.key){pt=times[i];break;} }
+    var ptime = pt ? pt.time : p.time;
+    var name  = p.name[currentLang] || p.name.ar;
+    html += '<div class="prayer-config-row"><label>'+p.icon+' '+name+'</label><input type="time" id="ptime_'+p.key+'" value="'+ptime+'"></div>';
+  });
+  panel.innerHTML = html;
+}
+
+function togglePrayerConfig() {
+  var panel = document.getElementById('prayerConfigPanel');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (!open) renderPrayerConfig();
+}
+
+function savePrayerTimes() {
+  var times = DEFAULT_PRAYERS.map(function(p) {
+    var el = document.getElementById('ptime_'+p.key);
+    return { key: p.key, time: el ? el.value : p.time };
+  });
+  var s = getRamadanState();
+  s.prayerTimes = times;
+  saveRamadanState();
+  togglePrayerConfig();
+  renderPrayerGrid();
+}
+
+function renderFasting() {
+  var s    = getRamadanState();
+  var tk   = todayKey();
+  var days = s.fastingDays || {};
+  var btn  = document.getElementById('fastingBtn');
+  var txt  = document.getElementById('fastingBtnText');
+  var str  = document.getElementById('fastingStreak');
+  if (!btn) return;
+  var isFasting = !!days[tk];
+  btn.className = 'fasting-btn ' + (isFasting ? 'fasting' : 'not-fasting');
+  if (txt) txt.textContent = isFasting ? t('ramadanFastingOn') : t('ramadanFastingOff');
+  var count = Object.keys(days).filter(function(k){return days[k];}).length;
+  if (str) str.textContent = t('ramadanFastingStreak',{n:count});
+}
+
+function toggleFasting() {
+  var s  = getRamadanState();
+  var tk = todayKey();
+  s.fastingDays = s.fastingDays || {};
+  s.fastingDays[tk] = !s.fastingDays[tk];
+  saveRamadanState();
+  renderFasting();
+}
+
+var WATER_TOTAL = 8;
+
+function renderWater() {
+  var s    = getRamadanState();
+  var tk   = todayKey();
+  var cups = (s.water && s.water[tk]) || 0;
+  var wrap = document.getElementById('waterCups');
+  var lbl  = document.getElementById('waterLabel');
+  if (!wrap) return;
+  var html = '';
+  for (var i = 0; i < WATER_TOTAL; i++) {
+    html += '<div class="water-cup'+(i < cups ? ' filled':'')+'" onclick="setWater('+(i+1)+')"></div>';
+  }
+  wrap.innerHTML = html;
+  if (lbl) lbl.textContent = t('ramadanWaterOf',{n:cups,total:WATER_TOTAL});
+}
+
+function setWater(n) {
+  var s  = getRamadanState();
+  var tk = todayKey();
+  s.water = s.water || {};
+  var cur = s.water[tk] || 0;
+  s.water[tk] = (cur === n) ? n-1 : n;
+  if (s.water[tk] < 0) s.water[tk] = 0;
+  saveRamadanState();
+  renderWater();
+}
+
+function renderQuran() {
+  var s    = getRamadanState();
+  var pg   = s.quranPages || 0;
+  var fill = document.getElementById('quranBarFill');
+  var lbl  = document.getElementById('quranTotalLbl');
+  var inp  = document.getElementById('quranPages');
+  var pct  = Math.min(100, Math.round(pg/604*100));
+  if (fill) fill.style.width = pct + '%';
+  if (lbl)  lbl.textContent  = t('ramadanQuranOf',{n:pg}) + ' (' + pct + '%)';
+  if (inp)  inp.value = pg;
+}
+
+function updateQuran() {
+  var inp = document.getElementById('quranPages');
+  if (!inp) return;
+  var v = Math.max(0, Math.min(604, parseInt(inp.value)||0));
+  var s = getRamadanState();
+  s.quranPages = v;
+  saveRamadanState();
+  renderQuran();
+}
+
+function quranAdj(delta) {
+  var s = getRamadanState();
+  s.quranPages = Math.max(0, Math.min(604, (s.quranPages||0) + delta));
+  saveRamadanState();
+  renderQuran();
+}
+
+var FIVE_PRAYERS = [
+  { key:'fajr',    icon:'🌅', name:{ar:'فجر',  en:'Fajr',    fr:'Fajr'}    },
+  { key:'dhuhr',   icon:'☀️', name:{ar:'ظهر',  en:'Dhuhr',   fr:'Dhuhr'}   },
+  { key:'asr',     icon:'🌤️', name:{ar:'عصر',  en:'Asr',     fr:'Asr'}     },
+  { key:'maghrib', icon:'🌇', name:{ar:'مغرب', en:'Maghrib', fr:'Maghrib'} },
+  { key:'isha',    icon:'🌙', name:{ar:'عشاء', en:'Isha',    fr:'Isha'}    },
+];
+
+function renderPrayerCounter() {
+  var s    = getRamadanState();
+  var tk   = todayKey();
+  var done = (s.prayersDone && s.prayersDone[tk]) || {};
+  var grid = document.getElementById('prayerCounterGrid');
+  var stat = document.getElementById('prayerCounterStatus');
+  if (!grid) return;
+  var html  = '';
+  var count = 0;
+  FIVE_PRAYERS.forEach(function(p) {
+    var isDone = !!done[p.key];
+    if (isDone) count++;
+    var name = p.name[currentLang] || p.name.ar;
+    html += '<div class="pc-item' + (isDone ? ' done' : '') + '" onclick="togglePrayer(&quot;' + p.key + '&quot;)"><div class="pc-item-name">' + name + '</div><div class="pc-item-icon">' + (isDone ? '&#x2705;' : p.icon) + '</div></div>';
+  });
+  grid.innerHTML = html;
+  if (stat) {
+    stat.textContent = count >= 5 ? t('ramadanAllPrayers') : (count + '/5');
+    stat.style.color = count >= 5 ? '#f5c842' : '';
+  }
+}
+
+function togglePrayer(key) {
+  var s  = getRamadanState();
+  var tk = todayKey();
+  s.prayersDone = s.prayersDone || {};
+  s.prayersDone[tk] = s.prayersDone[tk] || {};
+  s.prayersDone[tk][key] = !s.prayersDone[tk][key];
+  saveRamadanState();
+  renderPrayerCounter();
+}
+
+function renderTasbeeh() {
+  var s   = getRamadanState();
+  var cnt = s.tasbeeh || 0;
+  var tgt = s.tasbeehTarget || 100;
+  var el  = document.getElementById('tasbeehCount');
+  var tel = document.getElementById('tasbeehTarget');
+  if (el)  el.textContent  = cnt;
+  if (tel) tel.textContent = (currentLang==='ar'?'الهدف: ':'Target: ') + tgt + (cnt>=tgt?' 🌟':'');
+}
+
+function tasbeehTap() {
+  var s = getRamadanState();
+  s.tasbeeh = (s.tasbeeh || 0) + 1;
+  if (navigator.vibrate) navigator.vibrate(30);
+  saveRamadanState();
+  renderTasbeeh();
+}
+
+function tasbeehReset() {
+  var s = getRamadanState();
+  s.tasbeeh = 0;
+  saveRamadanState();
+  renderTasbeeh();
+}
+
+function tasbeehSetTarget() {
+  var cur = (getRamadanState().tasbeehTarget || 100);
+  var val = prompt((currentLang==='ar'?'الهدف الجديد:':'New target:'), cur);
+  if (val === null) return;
+  var n = parseInt(val);
+  if (isNaN(n) || n < 1) return;
+  var s = getRamadanState();
+  s.tasbeehTarget = n;
+  saveRamadanState();
+  renderTasbeeh();
+}
+
+function initRamadanSection() {
+  renderPrayerGrid();
+  renderFasting();
+  renderWater();
+  renderQuran();
+  renderPrayerCounter();
+  renderTasbeeh();
+  startRamadanCountdown();
+  setInterval(renderPrayerGrid, 60000);
+}
+
+function initRamadanMode() {
+  var s      = getRamadanState();
+  var enabled = !!s.enabled;
+  var toggle  = document.getElementById('ramadanToggle');
+  var nav     = document.querySelector('.nav-item[onclick*="ramadan"]');
+  if (toggle) toggle.checked = enabled;
+  if (nav)    nav.style.display = enabled ? '' : 'none';
+  if (enabled) {
+    document.getElementById('htmlRoot').classList.add('ramadan-mode');
+    updateAmbientBar();
+  }
+}
+</script>
+
+
+
 
 </body>
 </html>
